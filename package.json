@@ -1,0 +1,22 @@
+{
+  "name": "techgadgets-store",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-ready TechGadgets e-commerce storefront",
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "predev": "kill-port 5000 5173 5174",
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "dev:stop": "kill-port 5000 5173 5174",
+    "build": "npm run build --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "kill-port": "^2.0.1"
+  },
+  "dependencies": {
+    "cloudinary": "^1.41.3",
+    "multer": "^2.2.0",
+    "multer-storage-cloudinary": "^4.0.0"
+  }
+}
