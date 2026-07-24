@@ -45,17 +45,21 @@ export default function CheckoutPage() {
     loadSettings();
   }, []);
 
-
-  if (!isAuthenticated) {
-    return (
-      <div className="container-page py-16 text-center">
-        <p className="text-lg">Please sign in to checkout</p>
-        <Link to="/login" state={{ from: { pathname: '/checkout' } }} className="btn-primary mt-4 inline-flex">
-          Sign In
-        </Link>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        fullName: user.name || prev.fullName,
+        phone: user.phone || prev.phone,
+        district: user.address?.district || user.address?.state || prev.district,
+        thana: user.address?.thana || user.address?.city || prev.thana,
+        area: user.address?.area || user.address?.street || prev.area,
+        house: user.address?.house || prev.house,
+        postalCode: user.address?.postalCode || user.address?.zipCode || prev.postalCode,
+        deliveryInstructions: user.address?.deliveryInstructions || prev.deliveryInstructions,
+      }));
+    }
+  }, [user]);
 
   if (items.length === 0) {
     return (
@@ -78,7 +82,7 @@ export default function CheckoutPage() {
     }
     setLoading(true);
     try {
-      const { data } = await api.post('/orders', {
+      const orderData = {
         shippingAddress: {
           fullName: form.fullName,
           phone: form.phone,
@@ -91,7 +95,16 @@ export default function CheckoutPage() {
           country: form.country,
         },
         deliveryChargePhone: form.deliveryChargePhone,
-      });
+      };
+
+      if (!isAuthenticated) {
+        orderData.items = items.map((i) => ({
+          product: i.product._id,
+          quantity: i.quantity,
+        }));
+      }
+
+      const { data } = await api.post('/orders', orderData);
       await clearCart();
       showToast('Order placed successfully!');
       navigate(`/orders/${data.order._id}`);

@@ -4,6 +4,7 @@ import MainLayout from './layouts/MainLayout';
 import AdminLayout from './layouts/AdminLayout';
 import { ProtectedRoute, AdminRoute } from './components/auth/ProtectedRoute';
 import Spinner from './components/ui/Spinner';
+import Logo from './components/ui/Logo';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
@@ -21,7 +22,8 @@ const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 
 function PageLoader() {
   return (
-    <div className="flex min-h-[50vh] items-center justify-center">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6">
+      <Logo to="" size="xl" withText={false} className="animate-fade-up" />
       <Spinner size="lg" />
     </div>
   );
@@ -45,14 +47,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="checkout"
-            element={
-              <ProtectedRoute>
-                <CheckoutPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="checkout" element={<CheckoutPage />} />
           <Route
             path="orders/:id"
             element={

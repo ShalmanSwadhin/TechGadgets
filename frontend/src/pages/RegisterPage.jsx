@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { SITE_NAME } from '../config/site';
+import Logo from '../components/ui/Logo';
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
@@ -38,6 +39,7 @@ export default function RegisterPage() {
   return (
     <div className="container-page flex min-h-[70vh] items-center justify-center py-12">
       <div className="card w-full max-w-md p-8">
+        <Logo size="lg" withText={false} className="mb-6 justify-center" />
         <h1 className="text-2xl font-bold">Create account</h1>
         <p className="mt-2 text-sm text-slate-500">Join {SITE_NAME} for exclusive deals and faster checkout</p>
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
@@ -107,7 +109,7 @@ export default function RegisterPage() {
         </form>
         <p className="mt-6 text-center text-sm text-slate-500">
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-brand-600">Sign in</Link>
+          <Link to="/login" className="font-semibold text-brand-600 hover:text-brand-500 dark:text-brand-300">Sign in</Link>
         </p>
       </div>
     </div>

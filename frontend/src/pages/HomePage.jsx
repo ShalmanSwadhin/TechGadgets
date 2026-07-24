@@ -41,7 +41,7 @@ export default function HomePage() {
 
   return (
     <div>
-      <section className="relative overflow-hidden bg-gradient-to-br from-brand-950 via-brand-800 to-brand-600 text-white">
+      <section className="relative overflow-hidden bg-hero-gradient text-white">
         <div className="container-page grid min-h-[85vh] items-center gap-8 py-16 lg:grid-cols-2 lg:py-24">
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <span className="inline-block rounded-full bg-white/10 px-4 py-1 text-sm font-medium backdrop-blur">
@@ -107,7 +107,7 @@ export default function HomePage() {
               <Link
                 key={name}
                 to={`/products?category=${encodeURIComponent(name)}`}
-                className="group card flex flex-col items-center gap-3 p-6 text-center transition hover:shadow-card"
+                className="group card-interactive flex flex-col items-center gap-3 p-6 text-center"
               >
                 <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${color} text-2xl text-white shadow-soft`}>
                   <Icon />

@@ -8,16 +8,34 @@ const getPrice = (p) =>
   p.discountPrice != null && p.discountPrice < p.price ? p.discountPrice : p.price;
 
 export const createOrder = asyncHandler(async (req, res) => {
-  const cart = await Cart.findOne({ user: req.user._id }).populate('items.product');
-  if (!cart || cart.items.length === 0) {
-    res.status(400);
-    throw new Error('Cart is empty');
+  let itemsToProcess = [];
+  if (req.user) {
+    const cart = await Cart.findOne({ user: req.user._id }).populate('items.product');
+    if (!cart || cart.items.length === 0) {
+      res.status(400);
+      throw new Error('Cart is empty');
+    }
+    itemsToProcess = cart.items;
+  } else {
+    const { items } = req.body;
+    if (!items || items.length === 0) {
+      res.status(400);
+      throw new Error('Cart is empty');
+    }
+    for (const item of items) {
+      const product = await Product.findById(item.product);
+      if (!product) {
+        res.status(404);
+        throw new Error('Product not found');
+      }
+      itemsToProcess.push({ product, quantity: item.quantity });
+    }
   }
 
   const orderItems = [];
   let itemsPrice = 0;
 
-  for (const item of cart.items) {
+  for (const item of itemsToProcess) {
     const product = item.product;
     if (!product) continue;
     if (product.stock < item.quantity) {
@@ -38,17 +56,17 @@ export const createOrder = asyncHandler(async (req, res) => {
     await product.save();
   }
 
-  // Determine shipping price based on settings and destination city
+  // Determine shipping price based on settings and destination city/district
   const settings = (await Setting.findOne()) || { deliveryChargeDhaka: 80, deliveryChargeOutside: 150 };
-  const city = (req.body.shippingAddress?.city || '').toString().toLowerCase();
+  const districtOrCity = (req.body.shippingAddress?.district || req.body.shippingAddress?.city || '').toString().toLowerCase();
   let shippingPrice = 0;
   if (itemsPrice > 0) {
-    shippingPrice = city.includes('dhaka') ? settings.deliveryChargeDhaka : settings.deliveryChargeOutside;
+    shippingPrice = districtOrCity.includes('dhaka') ? settings.deliveryChargeDhaka : settings.deliveryChargeOutside;
   }
   const totalPrice = itemsPrice; // keep order total as product subtotal only; shipping is stored separately
 
   const order = await Order.create({
-    user: req.user._id,
+    user: req.user ? req.user._id : undefined,
     orderItems,
     shippingAddress: req.body.shippingAddress,
     deliveryChargePhone: req.body.deliveryChargePhone || '',
@@ -58,8 +76,13 @@ export const createOrder = asyncHandler(async (req, res) => {
     totalPrice,
   });
 
-  cart.items = [];
-  await cart.save();
+  if (req.user) {
+    const cart = await Cart.findOne({ user: req.user._id });
+    if (cart) {
+      cart.items = [];
+      await cart.save();
+    }
+  }
 
   res.status(201).json({ success: true, order });
 });
@@ -75,12 +98,11 @@ export const getOrderById = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error('Order not found');
   }
-  if (
-    order.user._id.toString() !== req.user._id.toString() &&
-    req.user.role !== 'admin'
-  ) {
-    res.status(403);
-    throw new Error('Not authorized');
+  if (order.user) {
+    if (!req.user || (order.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin')) {
+      res.status(403);
+      throw new Error('Not authorized');
+    }
   }
   res.json({ success: true, order });
 });
@@ -116,9 +138,11 @@ export const updateDeliveryChargeNumber = asyncHandler(async (req, res) => {
     throw new Error('Order not found');
   }
 
-  if (order.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-    res.status(403);
-    throw new Error('Not authorized');
+  if (order.user) {
+    if (!req.user || (order.user.toString() !== req.user._id.toString() && req.user.role !== 'admin')) {
+      res.status(403);
+      throw new Error('Not authorized');
+    }
   }
 
   order.deliveryChargePhone = req.body.deliveryChargePhone ?? order.deliveryChargePhone;

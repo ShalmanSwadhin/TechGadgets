@@ -14,11 +14,21 @@ export const getProducts = asyncHandler(async (req, res) => {
   const filter = {};
   if (req.query.category) filter.category = req.query.category;
   if (req.query.featured === 'true') filter.featured = true;
-  if (req.query.search) {
+  if (req.query.newArrival === 'true') filter.newArrival = true;
+
+  const search = req.query.search?.trim();
+  if (search) {
+    // Case-insensitive partial match across every user-facing field.
+    // Special regex characters are escaped so queries like "USB-C" are safe.
+    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const term = { $regex: escaped, $options: 'i' };
     filter.$or = [
-      { title: { $regex: req.query.search, $options: 'i' } },
-      { brand: { $regex: req.query.search, $options: 'i' } },
-      { description: { $regex: req.query.search, $options: 'i' } },
+      { title: term },
+      { description: term },
+      { brand: term },
+      { category: term },
+      { sku: term },
+      { tags: term },
     ];
   }
 

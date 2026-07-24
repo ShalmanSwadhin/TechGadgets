@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
-import { SITE_NAME } from '../../config/site';
+import Logo from '../ui/Logo';
 
 export default function Navbar({ onSearch }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -27,12 +27,9 @@ export default function Navbar({ onSearch }) {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/90 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/90">
+    <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-surface-dark/70">
       <div className="container-page flex h-16 items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-2 font-bold text-xl">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">TG</span>
-          <span className="hidden sm:inline">{SITE_NAME}</span>
-        </Link>
+        <Logo textClassName="hidden text-xl font-display font-bold tracking-tight sm:inline" />
 
         <form onSubmit={handleSearch} className="hidden flex-1 max-w-md md:flex">
           <div className="relative w-full">

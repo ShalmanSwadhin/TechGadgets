@@ -1,4 +1,7 @@
 export const SITE_NAME = import.meta.env.VITE_STORE_NAME || 'TechGadgets';
+// Single source of truth for the brand logo. Swap the file at this path
+// (frontend/public/Logo/TGLogo.jpeg) to rebrand the entire app.
+export const LOGO_SRC = '/Logo/TGLogo.jpeg';
 export const SITE_TAGLINE = import.meta.env.VITE_STORE_TAGLINE || 'Premium electronics for modern living';
 export const SITE_EMAIL = import.meta.env.VITE_STORE_EMAIL || 'hello@techgadgets.store';
 export const SITE_PHONE = import.meta.env.VITE_STORE_PHONE || '+1 (800) 555-0199';

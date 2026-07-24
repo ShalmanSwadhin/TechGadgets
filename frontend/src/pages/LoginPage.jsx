@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { SITE_NAME } from '../config/site';
+import Logo from '../components/ui/Logo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -32,6 +33,7 @@ export default function LoginPage() {
   return (
     <div className="container-page flex min-h-[70vh] items-center justify-center py-12">
       <div className="card w-full max-w-md p-8">
+        <Logo size="lg" withText={false} className="mb-6 justify-center" />
         <h1 className="text-2xl font-bold">Welcome back</h1>
         <p className="mt-2 text-sm text-slate-500">Sign in to your {SITE_NAME} account</p>
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
@@ -73,7 +75,7 @@ export default function LoginPage() {
         </form>
         <p className="mt-6 text-center text-sm text-slate-500">
           Don&apos;t have an account?{' '}
-          <Link to="/register" className="font-semibold text-brand-600">Sign up</Link>
+          <Link to="/register" className="font-semibold text-brand-600 hover:text-brand-500 dark:text-brand-300">Sign up</Link>
         </p>
         <p className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-500 dark:bg-slate-800">
           Use your email and password to access your account and order history.

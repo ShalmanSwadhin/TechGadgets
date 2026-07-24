@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom';
 import { FiBox, FiGrid, FiHome, FiLogOut, FiMenu, FiPackage, FiUsers, FiX } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { SITE_NAME } from '../config/site';
+import Logo from '../components/ui/Logo';
 
 const navItems = [
   { to: '/admin', icon: FiGrid, label: 'Dashboard', end: true },
@@ -17,11 +18,8 @@ export default function AdminLayout() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
-      <aside className="hidden w-64 flex-col border-r border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 lg:flex">
-        <Link to="/" className="mb-8 flex items-center gap-2 font-bold">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">TG</span>
-          <span>{SITE_NAME} Admin</span>
-        </Link>
+      <aside className="hidden w-64 flex-col border-r border-slate-200/70 bg-white/70 p-4 backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/60 lg:flex">
+        <Logo label={`${SITE_NAME} Admin`} className="mb-8" textClassName="text-base font-display font-bold" />
         <nav className="flex flex-1 flex-col gap-1">
           {navItems.map(({ to, icon: Icon, label, end }) => (
             <NavLink
@@ -72,10 +70,7 @@ export default function AdminLayout() {
             />
             <aside className="relative z-10 h-full w-72 overflow-hidden border-r border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
               <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-2 font-bold">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">TG</span>
-                  <span>{SITE_NAME} Admin</span>
-                </div>
+                <Logo label={`${SITE_NAME} Admin`} textClassName="text-base font-display font-bold" />
                 <button
                   type="button"
                   onClick={() => setSidebarOpen(false)}

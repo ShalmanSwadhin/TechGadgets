@@ -4,6 +4,7 @@ import api from '../services/api';
 import Spinner from '../components/ui/Spinner';
 import { useToast } from '../context/ToastContext';
 import { formatDate, formatPrice } from '../utils/format';
+import { useAuth } from '../context/AuthContext';
 
 export default function OrderDetailPage() {
   const { id } = useParams();
@@ -14,6 +15,7 @@ export default function OrderDetailPage() {
   const [deliveryPhone, setDeliveryPhone] = useState('');
   const [savingDeliveryPhone, setSavingDeliveryPhone] = useState(false);
   const { showToast } = useToast();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -63,14 +65,18 @@ export default function OrderDetailPage() {
     return (
       <div className="container-page py-16 text-center">
         <p className="text-red-500">{error || 'Order not found'}</p>
-        <Link to="/dashboard" className="btn-primary mt-4 inline-flex">Back to Dashboard</Link>
+        <Link to={isAuthenticated ? "/dashboard" : "/"} className="btn-primary mt-4 inline-flex">
+          {isAuthenticated ? 'Back to Dashboard' : 'Back to Home'}
+        </Link>
       </div>
     );
   }
 
   return (
     <div className="container-page py-8 pb-28">
-      <Link to="/dashboard" className="text-sm text-brand-600 hover:underline">← Back to orders</Link>
+      <Link to={isAuthenticated ? "/dashboard" : "/"} className="text-sm text-brand-600 hover:underline">
+        {isAuthenticated ? '← Back to orders' : '← Back to Home'}
+      </Link>
       <h1 className="section-title mt-4">Order #{order._id.slice(-8).toUpperCase()}</h1>
       <p className="text-slate-500">Placed on {formatDate(order.createdAt)}</p>
 
@@ -95,8 +101,8 @@ export default function OrderDetailPage() {
             <h2 className="font-semibold">Shipping</h2>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
               {order.shippingAddress.fullName}<br />
-              {order.shippingAddress.street}<br />
-              {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}<br />
+              {order.shippingAddress.area}{order.shippingAddress.house ? `, ${order.shippingAddress.house}` : ''}<br />
+              {order.shippingAddress.thana}, {order.shippingAddress.district}{order.shippingAddress.postalCode ? ` - ${order.shippingAddress.postalCode}` : ''}<br />
               {order.shippingAddress.country}
             </p>
             <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">

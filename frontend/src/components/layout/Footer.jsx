@@ -1,16 +1,14 @@
 import { Link } from 'react-router-dom';
 import { FiFacebook, FiInstagram, FiTwitter, FiYoutube } from 'react-icons/fi';
-import { SITE_ADDRESS, SITE_EMAIL, SITE_NAME, SITE_PHONE } from '../../config/site';
+import { SITE_ADDRESS, SITE_EMAIL, SITE_PHONE, SITE_NAME } from '../../config/site';
+import Logo from '../ui/Logo';
 
 export default function Footer() {
   return (
-    <footer className="border-t border-slate-100 bg-white pb-24 pt-12 dark:border-slate-800 dark:bg-slate-900 md:pb-12">
+    <footer className="relative border-t border-slate-200/70 bg-white/60 pb-24 pt-12 backdrop-blur-sm dark:border-white/10 dark:bg-slate-950/60 md:pb-12">
       <div className="container-page grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <Link to="/" className="flex items-center gap-2 font-bold text-xl">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">TG</span>
-            {SITE_NAME}
-          </Link>
+          <Logo />
           <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
             Premium electronics and accessories curated for everyday performance, travel, and comfort.
           </p>

@@ -42,10 +42,10 @@ export default function AdminDashboard() {
   }
 
   const cards = [
-    { label: 'Total Sales', value: formatPrice(stats.totalSales), icon: FiTrendingUp, color: 'from-emerald-500 to-teal-500' },
+    { label: 'Total Sales', value: formatPrice(stats.totalSales), icon: FiTrendingUp, color: 'from-brand-500 to-brand-700' },
     { label: 'Orders', value: stats.orders, icon: FiPackage, color: 'from-brand-500 to-violet-500' },
-    { label: 'Products', value: stats.products, icon: FiBox, color: 'from-amber-500 to-orange-500' },
-    { label: 'Customers', value: stats.users, icon: FiUsers, color: 'from-pink-500 to-rose-500' },
+    { label: 'Products', value: stats.products, icon: FiBox, color: 'from-violet-500 to-brand-600' },
+    { label: 'Customers', value: stats.users, icon: FiUsers, color: 'from-fuchsia-500 to-brand-600' },
   ];
 
   return (

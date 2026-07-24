@@ -27,10 +27,10 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
-connectDB().catch((err) => {
-  console.error('Database connection failed:', err.message);
-  process.exit(1);
-});
+// Tracks whether the MongoDB connection is ready. The server begins
+// listening immediately (see bottom of file) so the port is always open;
+// Mongoose buffers queries until the connection is established.
+let dbReady = false;
 
 app.disable('x-powered-by');
 app.use(helmet());
@@ -68,7 +68,11 @@ app.get('/', (_req, res) => {
 });
 
 app.get('/api/health', (_req, res) => {
-  res.json({ success: true, message: 'TechGadgets API is running' });
+  res.json({
+    success: true,
+    message: 'TechGadgets API is running',
+    database: dbReady ? 'connected' : 'connecting',
+  });
 });
 
 app.use('/api/auth', authRoutes);
@@ -83,6 +87,12 @@ app.use('/api/upload', uploadRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
+// Open the port immediately so the frontend proxy never hits a closed socket
+// during startup. Mongoose buffers model queries until the connection is
+// ready, so requests that arrive during the DB handshake (e.g. the first
+// login after a restart) resolve as soon as the connection is established
+// instead of failing with ECONNREFUSED. This is the root-cause fix for the
+// "login fails on the first attempts after server startup" issue.
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
@@ -96,3 +106,14 @@ server.on('error', (err) => {
   }
   throw err;
 });
+
+connectDB()
+  .then(() => {
+    dbReady = true;
+  })
+  .catch((err) => {
+    console.error('Database connection failed:', err.message);
+    // Exit so the process manager (Render, nodemon, node --watch) restarts
+    // with a fresh connection attempt rather than serving without a database.
+    server.close(() => process.exit(1));
+  });

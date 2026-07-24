@@ -33,6 +33,31 @@ export const protect = asyncHandler(async (req, res, next) => {
   next();
 });
 
+export const optionalProtect = asyncHandler(async (req, res, next) => {
+  let token;
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-password');
+    if (user && !user.isBlocked) {
+      req.user = user;
+    }
+  } catch (err) {
+    // token validation failure is ignored for optional protect
+  }
+  next();
+});
+
 export const admin = (req, res, next) => {
   if (req.user && req.user.role === 'admin') {
     next();

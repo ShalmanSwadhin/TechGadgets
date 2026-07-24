@@ -1,0 +1,17 @@
+{
+  "name": "TechGadgets",
+  "short_name": "TechGadgets",
+  "description": "Premium electronics and accessories designed for modern living.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#120018",
+  "theme_color": "#6a0dad",
+  "icons": [
+    {
+      "src": "/Logo/TGLogo.jpeg",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}

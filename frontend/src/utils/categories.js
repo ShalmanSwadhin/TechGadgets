@@ -9,13 +9,15 @@ import {
   FiSmartphone,
 } from 'react-icons/fi';
 
+// Gradients stay within the TechGadgets purple family (with one limited
+// cyan accent) so the category grid matches the brand design system.
 export const CATEGORIES = [
-  { name: 'Power Banks', icon: FiBatteryCharging, color: 'from-amber-500 to-orange-500' },
-  { name: 'Fast Chargers', icon: FiZap, color: 'from-yellow-500 to-amber-500' },
-  { name: 'Turbo Fans', icon: FiWind, color: 'from-cyan-500 to-blue-500' },
-  { name: 'Earbuds', icon: FiHeadphones, color: 'from-violet-500 to-purple-500' },
-  { name: 'Headphones', icon: FiMusic, color: 'from-pink-500 to-rose-500' },
-  { name: 'USB Cables', icon: FiLink, color: 'from-slate-500 to-slate-600' },
-  { name: 'Smart Gadgets', icon: FiCpu, color: 'from-emerald-500 to-teal-500' },
-  { name: 'Phone Accessories', icon: FiSmartphone, color: 'from-brand-500 to-brand-700' },
+  { name: 'Power Banks', icon: FiBatteryCharging, color: 'from-brand-500 to-brand-700' },
+  { name: 'Fast Chargers', icon: FiZap, color: 'from-violet-500 to-brand-600' },
+  { name: 'Turbo Fans', icon: FiWind, color: 'from-brand-500 to-[#5de2ff]' },
+  { name: 'Earbuds', icon: FiHeadphones, color: 'from-fuchsia-500 to-brand-600' },
+  { name: 'Headphones', icon: FiMusic, color: 'from-brand-600 to-violet-500' },
+  { name: 'USB Cables', icon: FiLink, color: 'from-slate-500 to-slate-700' },
+  { name: 'Smart Gadgets', icon: FiCpu, color: 'from-brand-400 to-brand-700' },
+  { name: 'Phone Accessories', icon: FiSmartphone, color: 'from-violet-600 to-brand-800' },
 ];

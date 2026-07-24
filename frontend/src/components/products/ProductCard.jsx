@@ -15,7 +15,7 @@ export default function ProductCard({ product }) {
       layout
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group card overflow-hidden transition hover:shadow-card"
+      className="group card-interactive overflow-hidden"
     >
       <Link to={`/products/${product._id}`} className="relative block aspect-square overflow-hidden bg-slate-50 dark:bg-slate-800">
         <img
@@ -30,7 +30,7 @@ export default function ProductCard({ product }) {
           </span>
         )}
         {product.featured && (
-          <span className="absolute right-3 top-3 rounded-lg bg-brand-600 px-2 py-1 text-xs font-bold text-white">
+          <span className="badge-solid absolute right-3 top-3">
             Featured
           </span>
         )}
@@ -61,7 +61,7 @@ export default function ProductCard({ product }) {
             type="button"
             onClick={() => addToCart(product)}
             disabled={product.stock === 0}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white transition hover:bg-brand-700 disabled:opacity-40"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-glow-sm transition hover:shadow-glow disabled:opacity-40 disabled:shadow-none"
             aria-label="Add to cart"
           >
             <FiShoppingCart />
