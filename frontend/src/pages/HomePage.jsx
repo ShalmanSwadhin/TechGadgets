@@ -87,7 +87,7 @@ export default function HomePage() {
             { icon: FiShield, title: 'Warranty', desc: '1-year on select items' },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-brand-600 dark:bg-slate-800 dark:text-brand-300">
                 <Icon className="text-xl" />
               </div>
               <div>
@@ -103,16 +103,16 @@ export default function HomePage() {
         <div className="container-page">
           <h2 className="section-title">Shop by Category</h2>
           <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {CATEGORIES.map(({ name, icon: Icon, color }) => (
+            {CATEGORIES.map(({ name, icon: Icon }) => (
               <Link
                 key={name}
                 to={`/products?category=${encodeURIComponent(name)}`}
                 className="group card-interactive flex flex-col items-center gap-3 p-6 text-center"
               >
-                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${color} text-2xl text-white shadow-soft`}>
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl text-brand-600 transition group-hover:bg-brand-500/10 dark:bg-slate-800 dark:text-brand-300">
                   <Icon />
                 </div>
-                <span className="text-sm font-semibold group-hover:text-brand-600">{name}</span>
+                <span className="text-sm font-semibold transition group-hover:text-brand-600 dark:group-hover:text-brand-300">{name}</span>
               </Link>
             ))}
           </div>
@@ -137,11 +137,14 @@ export default function HomePage() {
 
       <section className="py-16">
         <div className="container-page">
-          <div className="overflow-hidden rounded-3xl bg-gradient-to-r from-brand-600 to-violet-600 p-8 text-white sm:p-12">
-            <div className="max-w-xl">
-              <h2 className="text-2xl font-bold sm:text-3xl">Summer Tech Sale</h2>
-              <p className="mt-3 text-brand-100">Up to 30% off chargers, power banks, and audio gear. Limited time only.</p>
-              <Link to="/products?sort=popularity" className="mt-6 inline-flex rounded-xl bg-white px-6 py-3 font-semibold text-brand-700">
+          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-900 p-8 text-white shadow-card dark:border-white/10 sm:p-12">
+            <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-brand-600/25 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 left-10 h-64 w-64 rounded-full bg-brand-800/20 blur-3xl" />
+            <div className="relative max-w-xl">
+              <span className="badge">Limited time</span>
+              <h2 className="mt-4 text-2xl font-bold sm:text-3xl">Summer Tech Sale</h2>
+              <p className="mt-3 text-slate-300">Up to 30% off chargers, power banks, and audio gear.</p>
+              <Link to="/products?sort=popularity" className="btn-primary mt-6">
                 Shop Sale
               </Link>
             </div>

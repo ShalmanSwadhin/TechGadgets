@@ -5,42 +5,31 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Brand purple ramp derived from the TechGadgets logo.
-        // 700 = primary #6A0DAD, 550/500 = accent #8B1FD1, 300 = soft #C89BFF.
+        // Purple is the brand ACCENT only (buttons, links, icons, focus,
+        // badges) — never a page background. 600 = primary #7C3AED,
+        // 500 = #8B5CF6, 400 = hover #A855F7.
         brand: {
-          50: '#f7edff',
-          100: '#efdbff',
-          200: '#deb8ff',
-          300: '#c89bff',
-          400: '#b06bf2',
-          500: '#9b34e0',
-          600: '#8215c9',
-          700: '#6a0dad',
-          800: '#4e0b80',
-          900: '#370a5a',
-          950: '#250540',
+          50: '#f5f3ff',
+          100: '#ede9fe',
+          200: '#ddd6fe',
+          300: '#c4b5fd',
+          400: '#a855f7',
+          500: '#8b5cf6',
+          600: '#7c3aed',
+          700: '#6d28d9',
+          800: '#5b21b6',
+          900: '#4c1d95',
+          950: '#2e1065',
         },
-        // Neutral ramp, tinted toward purple so every surface, border and
-        // muted text reads as part of the brand instead of plain gray.
-        slate: {
-          50: '#faf7ff',
-          100: '#f1ebfa',
-          200: '#e1d6f0',
-          300: '#c6b6de',
-          400: '#a08bc2',
-          500: '#7c68a0',
-          600: '#5d4b7e',
-          700: '#43315f',
-          800: '#2e1a44',
-          900: '#221133',
-          950: '#120018',
-        },
+        // Neutral slate is intentionally left as Tailwind's default cool-gray
+        // ramp so surfaces read as premium charcoal/graphite, not purple.
         surface: {
-          light: '#f5eeff',
-          dark: '#120018',
+          light: '#f8fafc',
+          dark: '#09090b',
         },
         accent: {
-          cyan: '#5de2ff',
+          // Technology cyan — used very sparingly (status dots, tiny highlights).
+          cyan: '#22d3ee',
         },
       },
       fontFamily: {
@@ -48,16 +37,19 @@ export default {
         display: ['"Space Grotesk"', '"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        soft: '0 4px 24px -6px rgba(58, 12, 92, 0.18)',
-        card: '0 10px 34px -14px rgba(58, 12, 92, 0.28)',
-        glow: '0 10px 40px -8px rgba(139, 31, 209, 0.45)',
-        'glow-sm': '0 6px 20px -6px rgba(139, 31, 209, 0.4)',
+        // Neutral, near-black shadows for a premium hardware feel.
+        soft: '0 4px 20px -6px rgba(2, 6, 23, 0.12)',
+        card: '0 12px 34px -16px rgba(2, 6, 23, 0.35)',
+        // Purple glow reserved for accent elements (primary buttons / CTA).
+        glow: '0 10px 34px -10px rgba(124, 58, 237, 0.4)',
+        'glow-sm': '0 6px 18px -8px rgba(124, 58, 237, 0.35)',
       },
       backgroundImage: {
-        'brand-gradient': 'linear-gradient(135deg, #6a0dad 0%, #8b1fd1 100%)',
-        'brand-gradient-hover': 'linear-gradient(135deg, #7a12c4 0%, #a134e6 100%)',
+        'brand-gradient': 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)',
+        'brand-gradient-hover': 'linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)',
+        // Dark charcoal/midnight hero with only a faint purple glow accent.
         'hero-gradient':
-          'radial-gradient(60rem 60rem at 12% -10%, rgba(139,31,209,0.35), transparent 60%), radial-gradient(50rem 50rem at 100% 0%, rgba(106,13,173,0.45), transparent 55%), linear-gradient(160deg, #1e0530 0%, #2a0740 45%, #120018 100%)',
+          'radial-gradient(48rem 40rem at 82% -12%, rgba(124,58,237,0.22), transparent 60%), radial-gradient(36rem 32rem at 4% 6%, rgba(34,211,238,0.05), transparent 55%), linear-gradient(160deg, #0f172a 0%, #0b0f1a 55%, #09090b 100%)',
       },
       keyframes: {
         'fade-up': {

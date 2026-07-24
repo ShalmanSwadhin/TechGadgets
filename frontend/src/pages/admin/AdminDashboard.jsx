@@ -42,10 +42,10 @@ export default function AdminDashboard() {
   }
 
   const cards = [
-    { label: 'Total Sales', value: formatPrice(stats.totalSales), icon: FiTrendingUp, color: 'from-brand-500 to-brand-700' },
-    { label: 'Orders', value: stats.orders, icon: FiPackage, color: 'from-brand-500 to-violet-500' },
-    { label: 'Products', value: stats.products, icon: FiBox, color: 'from-violet-500 to-brand-600' },
-    { label: 'Customers', value: stats.users, icon: FiUsers, color: 'from-fuchsia-500 to-brand-600' },
+    { label: 'Total Sales', value: formatPrice(stats.totalSales), icon: FiTrendingUp },
+    { label: 'Orders', value: stats.orders, icon: FiPackage },
+    { label: 'Products', value: stats.products, icon: FiBox },
+    { label: 'Customers', value: stats.users, icon: FiUsers },
   ];
 
   return (
@@ -54,15 +54,15 @@ export default function AdminDashboard() {
       <p className="text-slate-500">Overview of your store performance</p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {cards.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="card overflow-hidden">
-            <div className={`bg-gradient-to-br ${color} p-4 text-white`}>
-              <Icon className="text-2xl opacity-80" />
+        {cards.map(({ label, value, icon: Icon }) => (
+          <div key={label} className="card p-5">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
+                <Icon className="text-lg" />
+              </span>
             </div>
-            <div className="p-4">
-              <p className="text-sm text-slate-500">{label}</p>
-              <p className="text-2xl font-bold">{value}</p>
-            </div>
+            <p className="mt-3 text-2xl font-bold">{value}</p>
           </div>
         ))}
       </div>

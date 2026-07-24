@@ -44,8 +44,8 @@ export default function MobileNav() {
             <Link
               key={link.to}
               to={to}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1 text-xs ${
-                active ? 'text-brand-600 font-semibold' : 'text-slate-500'
+              className={`flex flex-col items-center gap-0.5 px-3 py-1 text-xs transition ${
+                active ? 'font-semibold text-brand-600 dark:text-brand-400' : 'text-slate-500 dark:text-slate-400'
               }`}
             >
               <Icon className="text-xl" />
