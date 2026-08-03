@@ -30,7 +30,9 @@ export function AuthProvider({ children }) {
   }, [loadUser]);
 
   const login = async (email, password) => {
-    const { data } = await api.post('/auth/login', { email, password });
+    // Login is a read-only credential check with no side effects, so it is
+    // safe to replay through a transient startup/restart failure.
+    const { data } = await api.post('/auth/login', { email, password }, { _idempotent: true });
     localStorage.setItem('techgadgets_token', data.token);
     localStorage.setItem('techgadgets_user', JSON.stringify(data));
     setUser({

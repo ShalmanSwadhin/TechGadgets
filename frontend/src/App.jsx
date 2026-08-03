@@ -13,6 +13,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+const OrderSuccess = lazy(() => import('./pages/OrderSuccess'));
 const OrderDetailPage = lazy(() => import('./pages/OrderDetailPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -48,14 +49,10 @@ export default function App() {
             }
           />
           <Route path="checkout" element={<CheckoutPage />} />
-          <Route
-            path="orders/:id"
-            element={
-              <ProtectedRoute>
-                <OrderDetailPage />
-              </ProtectedRoute>
-            }
-          />
+          {/* Public: order confirmation works for guest checkout and members.
+              The API authorizes member-owned orders by token. */}
+          <Route path="order-success/:id" element={<OrderSuccess />} />
+          <Route path="orders/:id" element={<OrderDetailPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 

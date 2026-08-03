@@ -8,6 +8,19 @@ const getPrice = (p) =>
   p.discountPrice != null && p.discountPrice < p.price ? p.discountPrice : p.price;
 
 export const createOrder = asyncHandler(async (req, res) => {
+  const clientRequestId = (req.body.clientRequestId || '').toString().trim() || undefined;
+
+  // Idempotency guard: if this exact checkout submission was already processed
+  // (e.g. the client retried after the response was lost during a restart),
+  // return the original order instead of creating — and charging stock for —
+  // a duplicate. This runs BEFORE any stock mutation.
+  if (clientRequestId) {
+    const existing = await Order.findOne({ clientRequestId });
+    if (existing) {
+      return res.status(200).json({ success: true, order: existing, idempotent: true });
+    }
+  }
+
   let itemsToProcess = [];
   if (req.user) {
     const cart = await Cart.findOne({ user: req.user._id }).populate('items.product');
@@ -32,7 +45,9 @@ export const createOrder = asyncHandler(async (req, res) => {
     }
   }
 
+  // Build the order and prepare (but do not yet apply) stock changes.
   const orderItems = [];
+  const stockOps = [];
   let itemsPrice = 0;
 
   for (const item of itemsToProcess) {
@@ -51,9 +66,12 @@ export const createOrder = asyncHandler(async (req, res) => {
       quantity: item.quantity,
     });
     itemsPrice += price * item.quantity;
-    product.stock -= item.quantity;
-    product.popularity += item.quantity;
-    await product.save();
+    stockOps.push({
+      updateOne: {
+        filter: { _id: product._id },
+        update: { $inc: { stock: -item.quantity, popularity: item.quantity } },
+      },
+    });
   }
 
   // Determine shipping price based on settings and destination city/district
@@ -65,16 +83,36 @@ export const createOrder = asyncHandler(async (req, res) => {
   }
   const totalPrice = itemsPrice; // keep order total as product subtotal only; shipping is stored separately
 
-  const order = await Order.create({
-    user: req.user ? req.user._id : undefined,
-    orderItems,
-    shippingAddress: req.body.shippingAddress,
-    deliveryChargePhone: req.body.deliveryChargePhone || '',
-    paymentMethod: 'cod',
-    itemsPrice,
-    shippingPrice,
-    totalPrice,
-  });
+  // Persist the order FIRST. If a concurrent duplicate submission wins the
+  // unique clientRequestId race, return that order rather than erroring or
+  // double-counting stock (stock is only mutated after a successful create).
+  let order;
+  try {
+    order = await Order.create({
+      user: req.user ? req.user._id : undefined,
+      orderItems,
+      shippingAddress: req.body.shippingAddress,
+      deliveryChargePhone: req.body.deliveryChargePhone || '',
+      paymentMethod: 'cod',
+      itemsPrice,
+      shippingPrice,
+      totalPrice,
+      clientRequestId,
+    });
+  } catch (err) {
+    if (err.code === 11000 && clientRequestId) {
+      const existing = await Order.findOne({ clientRequestId });
+      if (existing) {
+        return res.status(200).json({ success: true, order: existing, idempotent: true });
+      }
+    }
+    throw err;
+  }
+
+  // Order is safely stored — now apply stock/popularity changes and clear cart.
+  if (stockOps.length > 0) {
+    await Product.bulkWrite(stockOps);
+  }
 
   if (req.user) {
     const cart = await Cart.findOne({ user: req.user._id });

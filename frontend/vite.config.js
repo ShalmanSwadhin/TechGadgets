@@ -9,17 +9,24 @@ export default defineConfig(() => ({
       '/api': {
         target: process.env.VITE_API_TARGET || 'http://127.0.0.1:5000',
         changeOrigin: true,
-        // During a backend restart the target port may briefly be closed.
-        // Return a clean 503 JSON response instead of letting the socket
-        // error bubble up as an unhandled proxy crash.
+        // This handler ONLY fires on proxy-level connection failures
+        // (ECONNREFUSED/ECONNRESET while the backend is down or mid-restart).
+        // Genuine backend responses — including real 4xx/5xx errors — pass
+        // straight through and are never masked. We translate the connection
+        // failure into a clean, retryable 503 so the socket error can't bubble
+        // up as an unhandled proxy crash. The API client retries these.
         configure: (proxy) => {
           proxy.on('error', (_err, _req, res) => {
-            if (res.writableEnded || !res.writeHead) return;
-            res.writeHead(503, { 'Content-Type': 'application/json' });
+            if (!res || res.writableEnded || !res.writeHead) return;
+            res.writeHead(503, {
+              'Content-Type': 'application/json',
+              'Retry-After': '1',
+            });
             res.end(
               JSON.stringify({
                 success: false,
-                message: 'Backend is starting up. Please retry in a moment.',
+                code: 'BACKEND_UNAVAILABLE',
+                message: 'Backend is temporarily unavailable. Retrying…',
               })
             );
           });

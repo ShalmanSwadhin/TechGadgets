@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import api from '../services/api';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api, { waitForBackendReady } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -17,6 +17,18 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState({ deliveryMessageEnabled: false, deliveryChargeDhaka: 80, deliveryChargeOutside: 150 });
   const [agreeDelivery, setAgreeDelivery] = useState(false);
+
+  // Stable idempotency key for THIS checkout attempt. Reused across retries so
+  // a lost response can never turn one checkout into two orders; the server
+  // de-duplicates on this value. Regenerated only if this component remounts.
+  const requestIdRef = useRef(null);
+  if (!requestIdRef.current) {
+    requestIdRef.current =
+      globalThis.crypto?.randomUUID?.() ||
+      `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  }
+  // Extra guard against a concurrent double-submit (e.g. double click / Enter).
+  const submittingRef = useRef(false);
 
   const total = subtotal;
 
@@ -76,13 +88,25 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading || submittingRef.current) return;
     if (settings.deliveryMessageEnabled && !agreeDelivery) {
       showToast('Please confirm you acknowledge delivery charges', 'error');
       return;
     }
+    submittingRef.current = true;
     setLoading(true);
     try {
+      // Gate the write: don't POST an order into a backend that is still
+      // starting or mid-restart. If it doesn't become ready in time, tell the
+      // user instead of firing a request that would hit a reset socket.
+      const ready = await waitForBackendReady({ timeoutMs: 15000 });
+      if (!ready) {
+        showToast('The server is starting up. Please try again in a moment.', 'error');
+        return;
+      }
+
       const orderData = {
+        clientRequestId: requestIdRef.current,
         shippingAddress: {
           fullName: form.fullName,
           phone: form.phone,
@@ -104,13 +128,16 @@ export default function CheckoutPage() {
         }));
       }
 
-      const { data } = await api.post('/orders', orderData);
+      // `_idempotent` lets the API client safely replay this write on a
+      // transient failure — the server dedupes on clientRequestId.
+      const { data } = await api.post('/orders', orderData, { _idempotent: true });
       await clearCart();
       showToast('Order placed successfully!');
-      navigate(`/orders/${data.order._id}`);
+      navigate(`/order-success/${data.order._id}`);
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };

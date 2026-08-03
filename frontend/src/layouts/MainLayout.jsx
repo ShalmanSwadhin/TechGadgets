@@ -3,6 +3,7 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import MobileNav from '../components/layout/MobileNav';
 import CartDrawer from '../components/cart/CartDrawer';
+import WhatsAppButton from '../components/ui/WhatsAppButton';
 import { useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 
@@ -22,6 +23,7 @@ export default function MainLayout() {
       <Footer />
       <MobileNav />
       <CartDrawer />
+      <WhatsAppButton />
     </div>
   );
 }

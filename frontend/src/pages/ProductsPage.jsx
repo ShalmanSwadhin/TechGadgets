@@ -69,13 +69,18 @@ export default function ProductsPage() {
 
   return (
     <div className="container-page py-8 pb-28">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="section-title">Shop Gadgets</h1>
-          <p className="mt-1 text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600 dark:text-brand-400">
+            {category || 'All products'}
+          </p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+            {debouncedSearch ? `Search results` : category || 'Shop Gadgets'}
+          </h1>
+          <p className="mt-1 text-slate-500 dark:text-slate-400">
             {category || debouncedSearch
-              ? `Results for ${category || `"${debouncedSearch}"`}`
-              : 'Browse our full collection'}
+              ? `Showing results for ${category || `"${debouncedSearch}"`}`
+              : 'Browse our full collection of premium gadgets.'}
           </p>
         </div>
         <button
@@ -89,18 +94,22 @@ export default function ProductsPage() {
 
       <div className="mt-8 flex gap-8">
         <aside
-          className={`w-64 shrink-0 space-y-6 ${showFilters ? 'block' : 'hidden lg:block'}`}
+          className={`w-64 shrink-0 space-y-4 ${showFilters ? 'block' : 'hidden lg:block'}`}
         >
-          <div>
-            <h3 className="font-semibold">Category</h3>
-            <ul className="mt-3 space-y-2 text-sm">
+          <div className="card p-5">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Category</h3>
+            <ul className="mt-3 space-y-1">
               <li>
                 <button
                   type="button"
                   onClick={() => updateParam('category', '')}
-                  className={!category ? 'font-semibold text-brand-600' : 'text-slate-500 hover:text-brand-600'}
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition ${
+                    !category
+                      ? 'bg-brand-500/10 font-semibold text-brand-600 dark:text-brand-300'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5'
+                  }`}
                 >
-                  All
+                  All Products
                 </button>
               </li>
               {CATEGORIES.map((c) => (
@@ -108,7 +117,11 @@ export default function ProductsPage() {
                   <button
                     type="button"
                     onClick={() => updateParam('category', c.name)}
-                    className={category === c.name ? 'font-semibold text-brand-600' : 'text-slate-500 hover:text-brand-600'}
+                    className={`w-full rounded-lg px-3 py-2 text-left text-sm transition ${
+                      category === c.name
+                        ? 'bg-brand-500/10 font-semibold text-brand-600 dark:text-brand-300'
+                        : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5'
+                    }`}
                   >
                     {c.name}
                   </button>
@@ -116,8 +129,8 @@ export default function ProductsPage() {
               ))}
             </ul>
           </div>
-          <div>
-            <h3 className="font-semibold">Sort By</h3>
+          <div className="card p-5">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Sort By</h3>
             <select
               value={sort}
               onChange={(e) => updateParam('sort', e.target.value)}
@@ -168,8 +181,10 @@ export default function ProductsPage() {
                         next.set('page', String(p));
                         setSearchParams(next);
                       }}
-                      className={`h-10 w-10 rounded-xl text-sm font-medium ${
-                        p === page ? 'bg-brand-600 text-white' : 'bg-slate-100 dark:bg-slate-800'
+                      className={`h-10 w-10 rounded-xl text-sm font-semibold transition ${
+                        p === page
+                          ? 'bg-brand-gradient text-white shadow-glow-sm'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                       }`}
                     >
                       {p}

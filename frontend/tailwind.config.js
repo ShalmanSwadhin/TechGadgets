@@ -56,9 +56,34 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        // Order Success celebration — subtle, plays once.
+        'fade-in-scale': {
+          '0%': { opacity: '0', transform: 'translateY(16px) scale(0.98)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        'check-pop': {
+          '0%': { opacity: '0', transform: 'scale(0)' },
+          '55%': { opacity: '1', transform: 'scale(1.18)' },
+          '75%': { transform: 'scale(0.94)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        'ring-pulse': {
+          '0%': { transform: 'scale(0.85)', opacity: '0.55' },
+          '70%': { transform: 'scale(1.35)', opacity: '0' },
+          '100%': { transform: 'scale(1.35)', opacity: '0' },
+        },
+        'confetti-fall': {
+          '0%': { transform: 'translateY(-12px) rotate(0deg)', opacity: '0' },
+          '12%': { opacity: '1' },
+          '100%': { transform: 'translateY(160px) rotate(320deg)', opacity: '0' },
+        },
       },
       animation: {
         'fade-up': 'fade-up 0.3s ease-out',
+        'fade-in-scale': 'fade-in-scale 0.5s ease-out both',
+        'check-pop': 'check-pop 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both',
+        'ring-pulse': 'ring-pulse 1.8s ease-out 0.2s',
+        'confetti-fall': 'confetti-fall 1.5s ease-out forwards',
       },
     },
   },
