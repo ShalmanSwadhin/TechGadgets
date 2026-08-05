@@ -20,7 +20,7 @@ export default function AdminLayout() {
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
       <aside className="hidden w-64 flex-col border-r border-slate-200/70 bg-white/70 p-4 backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/60 lg:flex">
         <Logo label={`${SITE_NAME} Admin`} className="mb-8" textClassName="text-base font-display font-bold" />
-        <nav className="flex flex-1 flex-col gap-1">
+        <nav className="flex flex-col gap-1">
           {navItems.map(({ to, icon: Icon, label, end }) => (
             <NavLink
               key={to}
@@ -37,13 +37,13 @@ export default function AdminLayout() {
               <Icon /> {label}
             </NavLink>
           ))}
+          <Link to="/" className="btn-ghost mt-1 justify-start">
+            <FiHome /> Store
+          </Link>
+          <button type="button" onClick={logout} className="btn-ghost justify-start text-red-500">
+            <FiLogOut /> Logout ({user?.name})
+          </button>
         </nav>
-        <Link to="/" className="btn-ghost mb-2 justify-start">
-          <FiHome /> Store
-        </Link>
-        <button type="button" onClick={logout} className="btn-ghost justify-start text-red-500">
-          <FiLogOut /> Logout ({user?.name})
-        </button>
       </aside>
 
       <div className="flex-1 overflow-auto">

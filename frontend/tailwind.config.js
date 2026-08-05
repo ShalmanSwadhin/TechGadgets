@@ -77,6 +77,11 @@ export default {
           '12%': { opacity: '1' },
           '100%': { transform: 'translateY(160px) rotate(320deg)', opacity: '0' },
         },
+        'cart-pop': {
+          '0%': { transform: 'scale(0.5)', opacity: '0.4' },
+          '50%': { transform: 'scale(1.25)' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
       },
       animation: {
         'fade-up': 'fade-up 0.3s ease-out',
@@ -84,6 +89,7 @@ export default {
         'check-pop': 'check-pop 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both',
         'ring-pulse': 'ring-pulse 1.8s ease-out 0.2s',
         'confetti-fall': 'confetti-fall 1.5s ease-out forwards',
+        'cart-pop': 'cart-pop 0.35s ease-out',
       },
     },
   },

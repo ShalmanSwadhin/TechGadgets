@@ -1,9 +1,24 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { FiMenu, FiMoon, FiSearch, FiShoppingBag, FiSun, FiUser, FiX } from 'react-icons/fi';
-import { useState } from 'react';
+import {
+  FiChevronDown,
+  FiGrid,
+  FiHeart,
+  FiLogOut,
+  FiMenu,
+  FiMoon,
+  FiPackage,
+  FiSearch,
+  FiSettings,
+  FiShoppingBag,
+  FiSun,
+  FiUser,
+  FiX,
+} from 'react-icons/fi';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 import Logo from '../ui/Logo';
 
 export default function Navbar({ onSearch }) {
@@ -14,7 +29,9 @@ export default function Navbar({ onSearch }) {
   const { user, isAdmin, logout } = useAuth();
   const { cartCount, openCart, closeCart } = useCart();
   const { dark, toggleTheme } = useTheme();
+  const { showToast } = useToast();
   const navigate = useNavigate();
+  const userMenuRef = useRef(null);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -24,6 +41,42 @@ export default function Navbar({ onSearch }) {
       setSearchOpen(false);
       setQuery('');
     }
+  };
+
+  // Close the profile dropdown on outside click or Escape (accessibility).
+  useEffect(() => {
+    if (!userMenuOpen) return undefined;
+    const onPointerDown = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setUserMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [userMenuOpen]);
+
+  const initials = user?.name
+    ? user.name
+        .split(' ')
+        .map((w) => w[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase()
+    : '';
+
+  const profileTo = isAdmin ? '/admin' : '/dashboard';
+  const menuItemClass =
+    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white';
+  const comingSoon = (label) => {
+    setUserMenuOpen(false);
+    showToast(`${label} is coming soon`, 'info');
   };
 
   return (
@@ -54,21 +107,95 @@ export default function Navbar({ onSearch }) {
           <button type="button" onClick={() => openCart()} className="btn-ghost relative" aria-label="Cart">
             <FiShoppingBag className="text-xl" />
             {cartCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+              <span
+                key={cartCount}
+                className="animate-cart-pop absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white"
+              >
                 {cartCount > 9 ? '9+' : cartCount}
               </span>
             )}
           </button>
           {user ? (
-            <div className="relative hidden sm:block">
-              <button type="button" className="btn-ghost flex items-center gap-2" onClick={(e) => { e.stopPropagation(); setUserMenuOpen((s) => !s); }}>
-                <FiUser className="text-xl" />
-                <span className="max-w-[80px] truncate text-sm">{user.name.split(' ')[0]}</span>
+            <div className="relative hidden sm:block" ref={userMenuRef}>
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-slate-100 dark:hover:bg-white/5"
+                onClick={() => setUserMenuOpen((s) => !s)}
+                aria-haspopup="menu"
+                aria-expanded={userMenuOpen}
+                aria-label="Account menu"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-gradient text-xs font-bold text-white shadow-glow-sm ring-1 ring-white/20">
+                  {initials || <FiUser />}
+                </span>
+                <span className="max-w-[80px] truncate text-sm font-medium">{user.name.split(' ')[0]}</span>
+                <FiChevronDown
+                  className={`text-slate-400 transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`}
+                />
               </button>
+
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-40 rounded-lg border bg-white p-2 shadow-md dark:bg-slate-800">
-                  <Link to={isAdmin ? '/admin' : '/dashboard'} className="block px-3 py-2 text-sm" onClick={() => { setMenuOpen(false); closeCart(); }}>Profile</Link>
-                  <button type="button" className="block w-full text-left px-3 py-2 text-sm text-red-500" onClick={() => { logout(); setUserMenuOpen(false); closeCart(); }}>Logout</button>
+                <div
+                  role="menu"
+                  className="animate-fade-in-scale absolute right-0 mt-2 w-64 origin-top-right overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/95"
+                >
+                  <div className="flex items-center gap-3 border-b border-slate-100 p-4 dark:border-white/10">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-gradient text-sm font-bold text-white shadow-glow-sm ring-1 ring-white/20">
+                      {initials || <FiUser />}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{user.name}</p>
+                      {user.email && (
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-2">
+                    <Link
+                      to={profileTo}
+                      role="menuitem"
+                      className={menuItemClass}
+                      onClick={() => { setUserMenuOpen(false); closeCart(); }}
+                    >
+                      <FiUser className="text-base text-brand-500" /> Profile
+                    </Link>
+                    <Link
+                      to="/dashboard"
+                      role="menuitem"
+                      className={menuItemClass}
+                      onClick={() => { setUserMenuOpen(false); closeCart(); }}
+                    >
+                      <FiPackage className="text-base text-brand-500" /> Orders
+                    </Link>
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        role="menuitem"
+                        className={menuItemClass}
+                        onClick={() => { setUserMenuOpen(false); closeCart(); }}
+                      >
+                        <FiGrid className="text-base text-brand-500" /> Admin Panel
+                      </Link>
+                    )}
+                    <button type="button" role="menuitem" className={`${menuItemClass} w-full`} onClick={() => comingSoon('Wishlist')}>
+                      <FiHeart className="text-base text-brand-500" /> Wishlist
+                    </button>
+                    <button type="button" role="menuitem" className={`${menuItemClass} w-full`} onClick={() => comingSoon('Settings')}>
+                      <FiSettings className="text-base text-brand-500" /> Settings
+                    </button>
+                  </div>
+
+                  <div className="border-t border-slate-100 p-2 dark:border-white/10">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
+                      onClick={() => { logout(); setUserMenuOpen(false); closeCart(); }}
+                    >
+                      <FiLogOut className="text-base" /> Logout
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

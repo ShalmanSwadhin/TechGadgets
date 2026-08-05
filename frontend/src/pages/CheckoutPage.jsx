@@ -7,7 +7,14 @@ import { useToast } from '../context/ToastContext';
 import { formatPrice, getEffectivePrice } from '../utils/format';
 import EmptyState from '../components/ui/EmptyState';
 import AddressForm from '../components/address/AddressForm';
-import { FiShoppingBag } from 'react-icons/fi';
+import { FiShoppingBag, FiShield, FiCheckCircle, FiTruck, FiHeadphones } from 'react-icons/fi';
+
+const TRUST_BADGES = [
+  { icon: FiShield, label: 'Secure Checkout' },
+  { icon: FiCheckCircle, label: 'Genuine Products' },
+  { icon: FiTruck, label: 'Fast Delivery' },
+  { icon: FiHeadphones, label: 'Customer Support' },
+];
 
 export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCart();
@@ -204,6 +211,17 @@ export default function CheckoutPage() {
           <button type="submit" disabled={loading} className="btn-primary mt-6 w-full">
             {loading ? 'Placing Order...' : 'Place Order'}
           </button>
+
+          <div className="mt-6 grid grid-cols-2 gap-3 border-t border-slate-100 pt-5 dark:border-slate-800">
+            {TRUST_BADGES.map(({ icon: Icon, label }) => (
+              <div key={label} className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500/10 text-brand-500">
+                  <Icon className="h-4 w-4" />
+                </span>
+                {label}
+              </div>
+            ))}
+          </div>
         </div>
       </form>
     </div>

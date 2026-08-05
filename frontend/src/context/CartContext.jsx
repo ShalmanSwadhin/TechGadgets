@@ -8,6 +8,12 @@ import { getEffectivePrice } from '../utils/format';
 const CartContext = createContext(null);
 const GUEST_KEY = 'techgadgets_guest_cart';
 
+// Pure mapper for a populated server cart → local item shape.
+const mapServerCart = (cart) =>
+  (cart?.items || [])
+    .filter((i) => i.product)
+    .map((i) => ({ product: i.product, quantity: i.quantity }));
+
 export function CartProvider({ children }) {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { showToast } = useToast();
@@ -31,13 +37,7 @@ export function CartProvider({ children }) {
     setLoading(true);
     try {
       const { data } = await api.get('/cart');
-      const populated = (data.cart?.items || [])
-        .filter((i) => i.product)
-        .map((i) => ({
-          product: i.product,
-          quantity: i.quantity,
-        }));
-      setItems(populated);
+      setItems(mapServerCart(data.cart));
     } catch {
       setItems([]);
     } finally {
@@ -74,10 +74,14 @@ export function CartProvider({ children }) {
     }
   }, [isAuthenticated, authLoading, fetchCart]);
 
-  const saveGuestCart = (newItems) => {
-    localStorage.setItem(GUEST_KEY, JSON.stringify(newItems));
-    setItems(newItems);
-  };
+  // Persist the guest cart whenever it changes (guest only). This lets every
+  // guest mutation use a pure functional state update — the click always
+  // applies to the latest committed state, so the first click can never be
+  // clobbered by a stale closure or a competing render.
+  useEffect(() => {
+    if (authLoading || isAuthenticated) return;
+    localStorage.setItem(GUEST_KEY, JSON.stringify(items));
+  }, [items, isAuthenticated, authLoading]);
 
   const openCart = useCallback(() => {
     lastFocusedElementRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -111,83 +115,88 @@ export function CartProvider({ children }) {
     closeCart();
   }, [location.pathname, closeCart]);
 
-  const addToCart = async (product, qty = 1) => {
-    if (isAuthenticated) {
-      try {
-        const { data } = await api.post('/cart', { productId: product._id, quantity: qty });
-        const populated = (data.cart?.items || [])
-          .filter((i) => i.product)
-          .map((i) => ({ product: i.product, quantity: i.quantity }));
-        setItems(populated);
-        showToast('Added to cart');
-        openCart();
-      } catch (err) {
-        showToast(err.message, 'error');
+  // Guards a server add from firing twice on a rapid double-click, which would
+  // otherwise create a duplicate/incorrect quantity on the backend.
+  const addingRef = useRef(false);
+
+  const addToCart = useCallback(
+    async (product, qty = 1) => {
+      if (isAuthenticated) {
+        if (addingRef.current) return;
+        addingRef.current = true;
+        try {
+          const { data } = await api.post('/cart', { productId: product._id, quantity: qty });
+          setItems(mapServerCart(data.cart));
+          showToast('Added to cart');
+          openCart();
+        } catch (err) {
+          showToast(err.message, 'error');
+        } finally {
+          addingRef.current = false;
+        }
+        return;
       }
-    } else {
-      const existing = items.find((i) => i.product._id === product._id);
-      let newItems;
-      if (existing) {
-        newItems = items.map((i) =>
-          i.product._id === product._id ? { ...i, quantity: i.quantity + qty } : i
-        );
-      } else {
-        newItems = [...items, { product, quantity: qty }];
-      }
-      saveGuestCart(newItems);
+      // Guest: functional update guarantees we build on the latest state.
+      setItems((prev) => {
+        const existing = prev.find((i) => i.product._id === product._id);
+        return existing
+          ? prev.map((i) =>
+              i.product._id === product._id ? { ...i, quantity: i.quantity + qty } : i
+            )
+          : [...prev, { product, quantity: qty }];
+      });
       showToast('Added to cart');
       openCart();
-    }
-  };
+    },
+    [isAuthenticated, showToast, openCart]
+  );
 
-  const updateQuantity = async (productId, quantity) => {
-    if (isAuthenticated) {
-      try {
-        const { data } = await api.put('/cart', { productId, quantity });
-        const populated = (data.cart?.items || [])
-          .filter((i) => i.product)
-          .map((i) => ({ product: i.product, quantity: i.quantity }));
-        setItems(populated);
-      } catch (err) {
-        showToast(err.message, 'error');
+  const updateQuantity = useCallback(
+    async (productId, quantity) => {
+      if (isAuthenticated) {
+        try {
+          const { data } = await api.put('/cart', { productId, quantity });
+          setItems(mapServerCart(data.cart));
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+        return;
       }
-    } else {
-      const newItems =
+      setItems((prev) =>
         quantity < 1
-          ? items.filter((i) => i.product._id !== productId)
-          : items.map((i) =>
-              i.product._id === productId ? { ...i, quantity } : i
-            );
-      saveGuestCart(newItems);
-    }
-  };
+          ? prev.filter((i) => i.product._id !== productId)
+          : prev.map((i) => (i.product._id === productId ? { ...i, quantity } : i))
+      );
+    },
+    [isAuthenticated, showToast]
+  );
 
-  const removeFromCart = async (productId) => {
-    if (isAuthenticated) {
-      try {
-        const { data } = await api.delete(`/cart/${productId}`);
-        const populated = (data.cart?.items || [])
-          .filter((i) => i.product)
-          .map((i) => ({ product: i.product, quantity: i.quantity }));
-        setItems(populated);
-        showToast('Removed from cart', 'info');
-      } catch (err) {
-        showToast(err.message, 'error');
+  const removeFromCart = useCallback(
+    async (productId) => {
+      if (isAuthenticated) {
+        try {
+          const { data } = await api.delete(`/cart/${productId}`);
+          setItems(mapServerCart(data.cart));
+          showToast('Removed from cart', 'info');
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+        return;
       }
-    } else {
-      saveGuestCart(items.filter((i) => i.product._id !== productId));
+      setItems((prev) => prev.filter((i) => i.product._id !== productId));
       showToast('Removed from cart', 'info');
-    }
-  };
+    },
+    [isAuthenticated, showToast]
+  );
 
-  const clearCart = async () => {
+  const clearCart = useCallback(async () => {
     if (isAuthenticated) {
       await api.delete('/cart/clear');
     } else {
       localStorage.removeItem(GUEST_KEY);
     }
     setItems([]);
-  };
+  }, [isAuthenticated]);
 
   const cartCount = useMemo(
     () => items.reduce((sum, i) => sum + i.quantity, 0),
@@ -199,27 +208,40 @@ export function CartProvider({ children }) {
     [items]
   );
 
-  return (
-    <CartContext.Provider
-      value={{
-        items,
-        loading,
-        cartCount,
-        subtotal,
-        addToCart,
-        updateQuantity,
-        removeFromCart,
-        clearCart,
-        fetchCart,
-        drawerOpen,
-        openCart,
-        closeCart,
-        toggleCart,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
+  const value = useMemo(
+    () => ({
+      items,
+      loading,
+      cartCount,
+      subtotal,
+      addToCart,
+      updateQuantity,
+      removeFromCart,
+      clearCart,
+      fetchCart,
+      drawerOpen,
+      openCart,
+      closeCart,
+      toggleCart,
+    }),
+    [
+      items,
+      loading,
+      cartCount,
+      subtotal,
+      addToCart,
+      updateQuantity,
+      removeFromCart,
+      clearCart,
+      fetchCart,
+      drawerOpen,
+      openCart,
+      closeCart,
+      toggleCart,
+    ]
   );
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
 export const useCart = () => {
