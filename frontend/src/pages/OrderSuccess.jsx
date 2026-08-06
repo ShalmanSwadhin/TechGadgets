@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   FiCheck,
   FiCheckCircle,
@@ -103,6 +103,8 @@ function DetailRow({ label, value, className = '' }) {
 
 export default function OrderSuccess() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const guestToken = searchParams.get('t') || '';
   const { isAuthenticated } = useAuth();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -112,7 +114,7 @@ export default function OrderSuccess() {
     let active = true;
     const load = async () => {
       try {
-        const { data } = await api.get(`/orders/${id}`);
+        const { data } = await api.get(`/orders/${id}`, { params: guestToken ? { token: guestToken } : undefined });
         if (active) setOrder(data.order);
       } catch (err) {
         if (active) setError(err.message);
@@ -124,7 +126,7 @@ export default function OrderSuccess() {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, guestToken]);
 
   if (loading) {
     return (
@@ -387,7 +389,10 @@ export default function OrderSuccess() {
                 View My Orders
               </Link>
             ) : null}
-            <Link to={`/orders/${order._id}`} className={`${GLASS_BTN} w-full sm:w-auto`}>
+            <Link
+              to={`/orders/${order._id}${guestToken ? `?t=${guestToken}` : ''}`}
+              className={`${GLASS_BTN} w-full sm:w-auto`}
+            >
               Track My Order
               <FiArrowRight className="h-4 w-4" />
             </Link>

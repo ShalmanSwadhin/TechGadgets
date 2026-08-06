@@ -47,13 +47,6 @@ export const createReview = asyncHandler(async (req, res) => {
     comment,
   });
 
-  product.reviews.push({
-    user: req.user._id,
-    name: req.user.name,
-    rating,
-    comment,
-  });
-  await product.save();
   await updateProductRatings(req.params.productId);
 
   res.status(201).json({ success: true, review });

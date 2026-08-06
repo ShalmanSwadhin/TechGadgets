@@ -104,8 +104,8 @@ export default function AdminOrders() {
                       <p className="text-sm font-semibold">Shipping address</p>
                       <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                         {order.shippingAddress.fullName}<br />
-                        {order.shippingAddress.street}<br />
-                        {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}<br />
+                        {order.shippingAddress.area}{order.shippingAddress.house ? `, ${order.shippingAddress.house}` : ''}<br />
+                        {order.shippingAddress.thana}, {order.shippingAddress.district}{order.shippingAddress.postalCode ? ` - ${order.shippingAddress.postalCode}` : ''}<br />
                         {order.shippingAddress.country}
                       </p>
                       <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">Contact: {order.shippingAddress.phone}</p>

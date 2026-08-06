@@ -36,7 +36,17 @@ const productSchema = new mongoose.Schema(
     warranty: { type: String, trim: true, default: '1 year' },
     tags: [{ type: String, trim: true }],
     thumbnail: { type: String, default: '' },
-    images: [{ type: String, required: true }],
+    // The admin UI blocks saving without an image, but the API itself didn't
+    // enforce it. A product created with an empty array would pass here
+    // silently and then fail every checkout for it later, since orderItemSchema
+    // requires `image` and `product.images[0]` would be undefined.
+    images: {
+      type: [{ type: String, required: true }],
+      validate: {
+        validator: (arr) => Array.isArray(arr) && arr.length > 0,
+        message: 'At least one product image is required.',
+      },
+    },
     ratings: { type: Number, default: 0 },
     numReviews: { type: Number, default: 0 },
     reviews: [reviewSchema],

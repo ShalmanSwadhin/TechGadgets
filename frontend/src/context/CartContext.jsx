@@ -151,26 +151,6 @@ export function CartProvider({ children }) {
     [isAuthenticated, showToast, openCart]
   );
 
-  const updateQuantity = useCallback(
-    async (productId, quantity) => {
-      if (isAuthenticated) {
-        try {
-          const { data } = await api.put('/cart', { productId, quantity });
-          setItems(mapServerCart(data.cart));
-        } catch (err) {
-          showToast(err.message, 'error');
-        }
-        return;
-      }
-      setItems((prev) =>
-        quantity < 1
-          ? prev.filter((i) => i.product._id !== productId)
-          : prev.map((i) => (i.product._id === productId ? { ...i, quantity } : i))
-      );
-    },
-    [isAuthenticated, showToast]
-  );
-
   const removeFromCart = useCallback(
     async (productId) => {
       if (isAuthenticated) {
@@ -187,6 +167,34 @@ export function CartProvider({ children }) {
       showToast('Removed from cart', 'info');
     },
     [isAuthenticated, showToast]
+  );
+
+  const updateQuantity = useCallback(
+    async (productId, quantity) => {
+      if (isAuthenticated) {
+        // Decrementing to zero means "remove" — the server rejects quantity
+        // < 1 on the update endpoint, so route this through removeFromCart
+        // instead of surfacing a confusing "quantity must be at least 1"
+        // error (guests already got this right below).
+        if (quantity < 1) {
+          await removeFromCart(productId);
+          return;
+        }
+        try {
+          const { data } = await api.put('/cart', { productId, quantity });
+          setItems(mapServerCart(data.cart));
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+        return;
+      }
+      setItems((prev) =>
+        quantity < 1
+          ? prev.filter((i) => i.product._id !== productId)
+          : prev.map((i) => (i.product._id === productId ? { ...i, quantity } : i))
+      );
+    },
+    [isAuthenticated, showToast, removeFromCart]
   );
 
   const clearCart = useCallback(async () => {

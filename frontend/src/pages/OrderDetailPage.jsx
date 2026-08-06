@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import Spinner from '../components/ui/Spinner';
 import { useToast } from '../context/ToastContext';
@@ -8,6 +8,8 @@ import { useAuth } from '../context/AuthContext';
 
 export default function OrderDetailPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const guestToken = searchParams.get('t') || '';
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,7 +23,7 @@ export default function OrderDetailPage() {
     const loadOrder = async () => {
       try {
         const [{ data: orderData }, { data: settingsData }] = await Promise.all([
-          api.get(`/orders/${id}`),
+          api.get(`/orders/${id}`, { params: guestToken ? { token: guestToken } : undefined }),
           api.get('/settings'),
         ]);
         setOrder(orderData.order);
@@ -35,14 +37,17 @@ export default function OrderDetailPage() {
     };
 
     loadOrder();
-  }, [id]);
+  }, [id, guestToken]);
 
   const handleDeliveryPhoneSave = async (e) => {
     e.preventDefault();
     if (!order) return;
     setSavingDeliveryPhone(true);
     try {
-      const { data } = await api.put(`/orders/${order._id}/delivery-charge`, { deliveryChargePhone: deliveryPhone.trim() });
+      const { data } = await api.put(`/orders/${order._id}/delivery-charge`, {
+        deliveryChargePhone: deliveryPhone.trim(),
+        token: guestToken || undefined,
+      });
       setOrder(data.order);
       setDeliveryPhone(data.order.deliveryChargePhone || '');
       showToast('Delivery charge number updated');

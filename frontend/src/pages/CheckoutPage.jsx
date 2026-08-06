@@ -140,7 +140,8 @@ export default function CheckoutPage() {
       const { data } = await api.post('/orders', orderData, { _idempotent: true });
       await clearCart();
       showToast('Order placed successfully!');
-      navigate(`/order-success/${data.order._id}`);
+      const tokenParam = data.order.guestAccessToken ? `?t=${data.order.guestAccessToken}` : '';
+      navigate(`/order-success/${data.order._id}${tokenParam}`);
     } catch (err) {
       showToast(err.message, 'error');
     } finally {

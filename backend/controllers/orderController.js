@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import Order from '../models/Order.js';
 import Cart from '../models/Cart.js';
 import Product from '../models/Product.js';
@@ -66,13 +67,15 @@ export const createOrder = asyncHandler(async (req, res) => {
       quantity: item.quantity,
     });
     itemsPrice += price * item.quantity;
-    stockOps.push({
-      updateOne: {
-        filter: { _id: product._id },
-        update: { $inc: { stock: -item.quantity, popularity: item.quantity } },
-      },
-    });
+    stockOps.push({ productId: product._id, quantity: item.quantity });
   }
+
+  // Guest orders have no account to own them, so anyone who saw/guessed the
+  // order id could otherwise read another guest's PII or rewrite their
+  // delivery-charge number. This random token is required (in addition to
+  // the id) for guest lookups; logged-in orders are authorized by the JWT
+  // instead and don't need one.
+  const guestAccessToken = req.user ? undefined : crypto.randomBytes(20).toString('hex');
 
   // Determine shipping price based on settings and destination city/district
   const settings = (await Setting.findOne()) || { deliveryChargeDhaka: 80, deliveryChargeOutside: 150 };
@@ -98,6 +101,7 @@ export const createOrder = asyncHandler(async (req, res) => {
       shippingPrice,
       totalPrice,
       clientRequestId,
+      guestAccessToken,
     });
   } catch (err) {
     if (err.code === 11000 && clientRequestId) {
@@ -110,8 +114,27 @@ export const createOrder = asyncHandler(async (req, res) => {
   }
 
   // Order is safely stored — now apply stock/popularity changes and clear cart.
+  // Each decrement is conditional on enough stock remaining: if a concurrent
+  // order for the same product wins the race first, we clamp to zero instead
+  // of letting an unconditional $inc push stock negative. Negative stock
+  // would silently defeat the "out of stock" checks elsewhere (which test
+  // `stock === 0`), letting an unbounded number of further orders oversell
+  // the same item.
   if (stockOps.length > 0) {
-    await Product.bulkWrite(stockOps);
+    await Promise.all(
+      stockOps.map(async ({ productId, quantity }) => {
+        const result = await Product.updateOne(
+          { _id: productId, stock: { $gte: quantity } },
+          { $inc: { stock: -quantity, popularity: quantity } }
+        );
+        if (result.modifiedCount === 0) {
+          await Product.updateOne(
+            { _id: productId },
+            { $set: { stock: 0 }, $inc: { popularity: quantity } }
+          );
+        }
+      })
+    );
   }
 
   if (req.user) {
@@ -122,7 +145,9 @@ export const createOrder = asyncHandler(async (req, res) => {
     }
   }
 
-  res.status(201).json({ success: true, order });
+  const orderResponse = order.toObject();
+  if (guestAccessToken) orderResponse.guestAccessToken = guestAccessToken;
+  res.status(201).json({ success: true, order: orderResponse });
 });
 
 export const getMyOrders = asyncHandler(async (req, res) => {
@@ -131,7 +156,9 @@ export const getMyOrders = asyncHandler(async (req, res) => {
 });
 
 export const getOrderById = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id).populate('user', 'name email');
+  const order = await Order.findById(req.params.id)
+    .select('+guestAccessToken')
+    .populate('user', 'name email');
   if (!order) {
     res.status(404);
     throw new Error('Order not found');
@@ -141,8 +168,19 @@ export const getOrderById = asyncHandler(async (req, res) => {
       res.status(403);
       throw new Error('Not authorized');
     }
+  } else if (!req.user || req.user.role !== 'admin') {
+    // Guest order: the id alone is not proof of ownership (Mongo ObjectIds
+    // are guessable/enumerable), so a matching guest access token is
+    // required unless an admin is looking it up.
+    const providedToken = (req.query.token || '').toString();
+    if (!order.guestAccessToken || providedToken !== order.guestAccessToken) {
+      res.status(404);
+      throw new Error('Order not found');
+    }
   }
-  res.json({ success: true, order });
+  const orderResponse = order.toObject();
+  delete orderResponse.guestAccessToken;
+  res.json({ success: true, order: orderResponse });
 });
 
 export const getAllOrders = asyncHandler(async (req, res) => {
@@ -170,7 +208,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 });
 
 export const updateDeliveryChargeNumber = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id);
+  const order = await Order.findById(req.params.id).select('+guestAccessToken');
   if (!order) {
     res.status(404);
     throw new Error('Order not found');
@@ -181,12 +219,20 @@ export const updateDeliveryChargeNumber = asyncHandler(async (req, res) => {
       res.status(403);
       throw new Error('Not authorized');
     }
+  } else if (!req.user || req.user.role !== 'admin') {
+    const providedToken = (req.body.token || req.query.token || '').toString();
+    if (!order.guestAccessToken || providedToken !== order.guestAccessToken) {
+      res.status(404);
+      throw new Error('Order not found');
+    }
   }
 
   order.deliveryChargePhone = req.body.deliveryChargePhone ?? order.deliveryChargePhone;
   await order.save();
 
-  res.json({ success: true, order });
+  const orderResponse = order.toObject();
+  delete orderResponse.guestAccessToken;
+  res.json({ success: true, order: orderResponse });
 });
 
 export const getOrderStats = asyncHandler(async (_req, res) => {

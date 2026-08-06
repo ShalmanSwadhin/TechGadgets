@@ -44,6 +44,15 @@ const orderSchema = new mongoose.Schema(
     // A unique+sparse index guarantees a retried request (e.g. after a lost
     // response during a server restart) can never create a duplicate order.
     clientRequestId: { type: String },
+    // Bearer secret for guest (no account) orders. Guest checkout has no user
+    // to own the order, so the order id alone would let anyone who can
+    // see/guess a Mongo ObjectId read another guest's name/phone/address or
+    // rewrite their delivery-charge number (IDOR). This random token is
+    // required in addition to the id for any guest order lookup/update; it is
+    // returned once in the create-order response and carried by the client
+    // (URL query param) from then on. Logged-in orders don't need it — those
+    // are authorized by the owning user's JWT instead.
+    guestAccessToken: { type: String, select: false },
     status: {
       type: String,
       enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
