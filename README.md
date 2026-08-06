@@ -75,18 +75,22 @@ NODE_ENV=development
 MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/techgadgets?retryWrites=true&w=majority
 JWT_SECRET=change-me-to-a-long-random-string
 JWT_EXPIRE=7d
-CLIENT_URL=http://127.0.0.1:5173
-SERVER_URL=http://127.0.0.1:5000
+# Single origin or a comma-separated allow-list of frontend origins
+CLIENT_URL=http://localhost:5173
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
-COOKIE_SECRET=change-me-to-a-long-random-string
 ```
+
+Optional (only for `npm run create-admin` when not passing CLI args):
+`ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`.
 
 ### Frontend
 
 ```env
 VITE_API_URL=/api
+# Dev-only proxy target (not used in the production build)
+VITE_API_TARGET=http://127.0.0.1:5000
 VITE_STORE_NAME=TechGadgets
 VITE_STORE_TAGLINE=Build In Services
 VITE_STORE_EMAIL=hello@techgadgets.store

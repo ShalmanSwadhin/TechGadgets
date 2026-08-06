@@ -20,7 +20,14 @@ import uploadRoutes from '../routes/uploadRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const clientOrigin = process.env.CLIENT_URL || 'http://127.0.0.1:5173';
+// CLIENT_URL may be a single origin or a comma-separated allow-list (e.g. a
+// custom domain plus the *.vercel.app URL). In development it falls back to
+// the local Vite dev server on both localhost and 127.0.0.1.
+const clientOrigin = process.env.CLIENT_URL || 'http://localhost:5173,http://127.0.0.1:5173';
+const allowedOrigins = clientOrigin
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -68,7 +75,15 @@ app.use(compression());
 app.use(limiter);
 app.use(
   cors({
-    origin: clientOrigin,
+    origin(origin, callback) {
+      // Allow requests with no Origin header (server-to-server, curl, health
+      // probes) and any explicitly whitelisted origin. Everything else is
+      // rejected — we never blanket-allow every origin.
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   })
 );
