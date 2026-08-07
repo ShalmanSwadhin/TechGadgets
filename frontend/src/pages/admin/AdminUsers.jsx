@@ -7,6 +7,8 @@ import { formatDate } from '../../utils/format';
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [subscribers, setSubscribers] = useState([]);
+  const [subscribersLoading, setSubscribersLoading] = useState(true);
   const { showToast } = useToast();
 
   const fetchUsers = async () => {
@@ -21,8 +23,21 @@ export default function AdminUsers() {
     }
   };
 
+  const fetchSubscribers = async () => {
+    setSubscribersLoading(true);
+    try {
+      const { data } = await api.get('/admin/newsletter');
+      setSubscribers(data.subscribers);
+    } catch {
+      setSubscribers([]);
+    } finally {
+      setSubscribersLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchSubscribers();
   }, []);
 
   const toggleBlock = async (id) => {
@@ -90,6 +105,33 @@ export default function AdminUsers() {
           </tbody>
         </table>
       </div>
+
+      <h2 className="mt-10 text-xl font-bold">Newsletter Subscribers</h2>
+      <p className="text-slate-500">{subscribers.length} subscribed email(s)</p>
+      {subscribersLoading ? (
+        <div className="mt-6 flex justify-center"><Spinner /></div>
+      ) : subscribers.length === 0 ? (
+        <p className="mt-4 text-sm text-slate-500">No newsletter signups yet.</p>
+      ) : (
+        <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+          <table className="w-full min-w-[400px] text-left text-sm">
+            <thead className="bg-slate-50 dark:bg-slate-800">
+              <tr>
+                <th className="p-4">Email</th>
+                <th className="p-4">Subscribed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {subscribers.map((s) => (
+                <tr key={s._id} className="border-t border-slate-100 dark:border-slate-800">
+                  <td className="p-4 font-medium">{s.email}</td>
+                  <td className="p-4 text-slate-500">{formatDate(s.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

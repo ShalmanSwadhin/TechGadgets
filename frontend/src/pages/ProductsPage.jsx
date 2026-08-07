@@ -6,6 +6,8 @@ import ProductCard from '../components/products/ProductCard';
 import { ProductCardSkeleton } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import { useDebounce } from '../hooks/useDebounce';
+import { useSeo } from '../hooks/useSeo';
+import { SITE_NAME } from '../config/site';
 import { CATEGORIES } from '../utils/categories';
 import { FiPackage } from 'react-icons/fi';
 
@@ -58,6 +60,17 @@ export default function ProductsPage() {
     };
     fetchProducts();
   }, [debouncedSearch, category, sort, featured, page]);
+
+  useSeo({
+    title: debouncedSearch
+      ? `Search: ${debouncedSearch} | ${SITE_NAME}`
+      : category
+        ? `${category} | ${SITE_NAME}`
+        : `Shop All Products | ${SITE_NAME}`,
+    description: category
+      ? `Browse ${category.toLowerCase()} at ${SITE_NAME} — premium electronics and accessories.`
+      : `Browse the full ${SITE_NAME} collection of power banks, chargers, earbuds, and smart accessories.`,
+  });
 
   const updateParam = (key, value) => {
     const next = new URLSearchParams(searchParams);

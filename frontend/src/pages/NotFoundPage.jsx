@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom';
+import { useSeo } from '../hooks/useSeo';
+import { SITE_NAME } from '../config/site';
 
 export default function NotFoundPage() {
+  useSeo({ title: `Page Not Found | ${SITE_NAME}` });
+
   return (
     <div className="container-page flex min-h-[60vh] flex-col items-center justify-center py-16 text-center">
       <p className="text-8xl font-extrabold text-brand-600">404</p>

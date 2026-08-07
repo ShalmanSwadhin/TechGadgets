@@ -10,6 +10,8 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { formatPrice, getDiscountPercent, getEffectivePrice } from '../utils/format';
+import { useSeo } from '../hooks/useSeo';
+import { SITE_NAME } from '../config/site';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -45,6 +47,11 @@ export default function ProductDetailPage() {
     };
     load();
   }, [id]);
+
+  useSeo({
+    title: product ? `${product.title} | ${SITE_NAME}` : undefined,
+    description: product?.description ? product.description.slice(0, 155) : undefined,
+  });
 
   const submitReview = async (e) => {
     e.preventDefault();

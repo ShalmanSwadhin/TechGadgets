@@ -8,10 +8,14 @@ import { useToast } from '../context/ToastContext';
 import EmptyState from '../components/ui/EmptyState';
 import AddressForm from '../components/address/AddressForm';
 import { FiPackage } from 'react-icons/fi';
+import { useSeo } from '../hooks/useSeo';
+import { SITE_NAME } from '../config/site';
 
 export default function DashboardPage() {
   const { user, updateProfile } = useAuth();
   const { showToast } = useToast();
+
+  useSeo({ title: `My Dashboard | ${SITE_NAME}` });
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState({

@@ -8,6 +8,7 @@ import morgan from 'morgan';
 import mongoSanitize from 'express-mongo-sanitize';
 import rateLimit from 'express-rate-limit';
 import connectDB from '../config/db.js';
+import { getRateLimitStore } from '../config/rateLimitStore.js';
 import { notFound, errorHandler } from '../middleware/errorHandler.js';
 import authRoutes from '../routes/authRoutes.js';
 import productRoutes from '../routes/productRoutes.js';
@@ -17,6 +18,7 @@ import reviewRoutes from '../routes/reviewRoutes.js';
 import adminRoutes from '../routes/adminRoutes.js';
 import settingsRoutes from '../routes/settingsRoutes.js';
 import uploadRoutes from '../routes/uploadRoutes.js';
+import newsletterRoutes from '../routes/newsletterRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -33,6 +35,9 @@ const limiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  // Shared across instances via Redis when REDIS_URL is set; otherwise the
+  // default per-process in-memory store (fine for a single instance).
+  store: getRateLimitStore(),
   // Never rate-limit liveness/readiness probes: platform health checks (e.g.
   // Render) and the client's readiness gate poll these frequently and must
   // not receive 429s while the backend is starting up.
@@ -107,6 +112,7 @@ app.get('/', (_req, res) => {
       reviews: '/api/reviews',
       admin: '/api/admin',
       upload: '/api/upload',
+      newsletter: '/api/newsletter',
     },
     client: clientOrigin,
   });
@@ -145,6 +151,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/newsletter', newsletterRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

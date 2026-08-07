@@ -48,7 +48,24 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // A 200 that isn't JSON almost always means this request never actually
+    // reached the backend — e.g. a static host's SPA-fallback rewrite caught
+    // "/api/..." and served index.html instead of proxying to the API (this
+    // happens if VITE_API_URL is left as the relative "/api" default without
+    // a matching host-level rewrite/proxy to the real backend). Without this
+    // check, callers would silently get an HTML string back and crash later
+    // on `data.someField` being undefined instead of seeing a clear cause.
+    const contentType = (response.headers?.['content-type'] || '').toLowerCase();
+    if (!contentType.includes('application/json')) {
+      const err = new Error(
+        'The API returned a non-JSON response. This usually means VITE_API_URL is not pointing at the backend (check the deployment config).'
+      );
+      err.isMisconfigured = true;
+      return Promise.reject(err);
+    }
+    return response;
+  },
   async (error) => {
     const config = error.config || {};
     const transient = isTransient(error);

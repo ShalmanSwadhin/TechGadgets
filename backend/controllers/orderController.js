@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import crypto from 'crypto';
 import Order from '../models/Order.js';
 import Cart from '../models/Cart.js';
@@ -7,6 +8,78 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 
 const getPrice = (p) =>
   p.discountPrice != null && p.discountPrice < p.price ? p.discountPrice : p.price;
+
+class InsufficientStockError extends Error {}
+
+// Flips to false the first time this MongoDB deployment reports it can't run
+// multi-document transactions (a standalone server, not a replica set or
+// mongos — possible on some local/dev setups, never true on MongoDB Atlas).
+// Checked once so a non-replica-set local DB doesn't retry-and-fail a
+// transaction on every single checkout for the rest of the process.
+let transactionsSupported = true;
+const isTransactionsUnsupportedError = (err) =>
+  /Transaction numbers are only allowed on a replica set member or mongos/i.test(err.message || '');
+
+// Atomically reserves stock and creates the order in one multi-document
+// transaction: if any item is oversold, the whole thing — including every
+// stock decrement already applied earlier in this same attempt — rolls back
+// automatically. This is the strong, race-free path used on Atlas.
+async function createOrderTransactional(orderPayload, stockOps) {
+  const session = await mongoose.startSession();
+  try {
+    let createdOrder;
+    await session.withTransaction(async () => {
+      for (const { productId, quantity } of stockOps) {
+        const result = await Product.updateOne(
+          { _id: productId, stock: { $gte: quantity } },
+          { $inc: { stock: -quantity, popularity: quantity } },
+          { session }
+        );
+        if (result.modifiedCount === 0) {
+          throw new InsufficientStockError('Insufficient stock for one or more items. Please refresh your cart and try again.');
+        }
+      }
+      const [created] = await Order.create([orderPayload], { session });
+      createdOrder = created;
+    });
+    return createdOrder;
+  } finally {
+    await session.endSession();
+  }
+}
+
+// Fallback for MongoDB deployments that can't run transactions (standalone,
+// non-replica-set — local dev only; never Atlas). Without a transaction we
+// can't atomically reject an oversold order before it's created without
+// risking a worse failure mode (a crash between reserving stock and creating
+// the order would silently lose inventory tracking with no order to show for
+// it). So this keeps the order-first approach and clamps stock to zero
+// instead of letting it go negative — negative stock would silently defeat
+// the "out of stock" checks elsewhere (which test `stock === 0`), letting an
+// unbounded number of further orders oversell the same item. It's a weaker
+// guarantee than the transactional path (a rare oversell can still slip
+// through), but it can never crash-and-lose-stock or 500 the whole request.
+async function createOrderNonTransactional(orderPayload) {
+  const order = await Order.create(orderPayload);
+  const stockOps = orderPayload.orderItems.map((i) => ({ productId: i.product, quantity: i.quantity }));
+  if (stockOps.length > 0) {
+    await Promise.all(
+      stockOps.map(async ({ productId, quantity }) => {
+        const result = await Product.updateOne(
+          { _id: productId, stock: { $gte: quantity } },
+          { $inc: { stock: -quantity, popularity: quantity } }
+        );
+        if (result.modifiedCount === 0) {
+          await Product.updateOne(
+            { _id: productId },
+            { $set: { stock: 0 }, $inc: { popularity: quantity } }
+          );
+        }
+      })
+    );
+  }
+  return order;
+}
 
 export const createOrder = asyncHandler(async (req, res) => {
   const clientRequestId = (req.body.clientRequestId || '').toString().trim() || undefined;
@@ -86,55 +159,51 @@ export const createOrder = asyncHandler(async (req, res) => {
   }
   const totalPrice = itemsPrice; // keep order total as product subtotal only; shipping is stored separately
 
-  // Persist the order FIRST. If a concurrent duplicate submission wins the
-  // unique clientRequestId race, return that order rather than erroring or
-  // double-counting stock (stock is only mutated after a successful create).
+  const orderPayload = {
+    user: req.user ? req.user._id : undefined,
+    orderItems,
+    shippingAddress: req.body.shippingAddress,
+    deliveryChargePhone: req.body.deliveryChargePhone || '',
+    paymentMethod: 'cod',
+    itemsPrice,
+    shippingPrice,
+    totalPrice,
+    clientRequestId,
+    guestAccessToken,
+  };
+
   let order;
   try {
-    order = await Order.create({
-      user: req.user ? req.user._id : undefined,
-      orderItems,
-      shippingAddress: req.body.shippingAddress,
-      deliveryChargePhone: req.body.deliveryChargePhone || '',
-      paymentMethod: 'cod',
-      itemsPrice,
-      shippingPrice,
-      totalPrice,
-      clientRequestId,
-      guestAccessToken,
-    });
+    order = transactionsSupported
+      ? await createOrderTransactional(orderPayload, stockOps)
+      : await createOrderNonTransactional(orderPayload);
   } catch (err) {
-    if (err.code === 11000 && clientRequestId) {
-      const existing = await Order.findOne({ clientRequestId });
-      if (existing) {
-        return res.status(200).json({ success: true, order: existing, idempotent: true });
-      }
-    }
-    throw err;
-  }
-
-  // Order is safely stored — now apply stock/popularity changes and clear cart.
-  // Each decrement is conditional on enough stock remaining: if a concurrent
-  // order for the same product wins the race first, we clamp to zero instead
-  // of letting an unconditional $inc push stock negative. Negative stock
-  // would silently defeat the "out of stock" checks elsewhere (which test
-  // `stock === 0`), letting an unbounded number of further orders oversell
-  // the same item.
-  if (stockOps.length > 0) {
-    await Promise.all(
-      stockOps.map(async ({ productId, quantity }) => {
-        const result = await Product.updateOne(
-          { _id: productId, stock: { $gte: quantity } },
-          { $inc: { stock: -quantity, popularity: quantity } }
-        );
-        if (result.modifiedCount === 0) {
-          await Product.updateOne(
-            { _id: productId },
-            { $set: { stock: 0 }, $inc: { popularity: quantity } }
-          );
+    if (transactionsSupported && isTransactionsUnsupportedError(err)) {
+      transactionsSupported = false;
+      console.warn(
+        'MongoDB does not support multi-document transactions on this deployment ' +
+          '(not a replica set/mongos) — falling back to the non-transactional ' +
+          'stock-reservation path for the rest of this process. Expected for some ' +
+          'local/standalone MongoDB setups; always false on MongoDB Atlas.'
+      );
+      order = await createOrderNonTransactional(orderPayload);
+    } else if (err.code === 11000) {
+      // A concurrent duplicate submission (same clientRequestId) won the
+      // race and already created the order — return that one instead of
+      // erroring or double-counting stock.
+      if (clientRequestId) {
+        const existing = await Order.findOne({ clientRequestId });
+        if (existing) {
+          return res.status(200).json({ success: true, order: existing, idempotent: true });
         }
-      })
-    );
+      }
+      throw err;
+    } else if (err instanceof InsufficientStockError) {
+      res.status(400);
+      throw err;
+    } else {
+      throw err;
+    }
   }
 
   if (req.user) {
@@ -235,18 +304,3 @@ export const updateDeliveryChargeNumber = asyncHandler(async (req, res) => {
   res.json({ success: true, order: orderResponse });
 });
 
-export const getOrderStats = asyncHandler(async (_req, res) => {
-  const orders = await Order.find({});
-  const totalSales = orders.reduce((sum, o) => sum + o.itemsPrice, 0);
-  const pending = orders.filter((o) => o.status === 'pending').length;
-  const delivered = orders.filter((o) => o.status === 'delivered').length;
-  res.json({
-    success: true,
-    stats: {
-      totalOrders: orders.length,
-      totalSales,
-      pending,
-      delivered,
-    },
-  });
-});

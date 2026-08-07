@@ -19,6 +19,7 @@ import SectionHeader from '../components/ui/SectionHeader';
 import EmptyState from '../components/ui/EmptyState';
 import { CATEGORIES } from '../utils/categories';
 import { SITE_NAME, SITE_TAGLINE } from '../config/site';
+import { useToast } from '../context/ToastContext';
 
 const WHY = [
   { icon: FiCheckCircle, title: 'Genuine Products', desc: 'Every gadget is 100% authentic with an official warranty.' },
@@ -54,6 +55,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     const load = async () => {
@@ -77,9 +80,18 @@ export default function HomePage() {
     load();
   }, []);
 
-  const handleNewsletter = (e) => {
+  const handleNewsletter = async (e) => {
     e.preventDefault();
-    if (email) setSubscribed(true);
+    if (!email || subscribing) return;
+    setSubscribing(true);
+    try {
+      await api.post('/newsletter', { email });
+      setSubscribed(true);
+    } catch (err) {
+      showToast(err.message || 'Could not subscribe right now', 'error');
+    } finally {
+      setSubscribing(false);
+    }
   };
 
   const viewAll = (to) => (
@@ -315,7 +327,9 @@ export default function HomePage() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="input-field flex-1"
                 />
-                <button type="submit" className="btn-primary">Subscribe</button>
+                <button type="submit" disabled={subscribing} className="btn-primary">
+                  {subscribing ? 'Subscribing...' : 'Subscribe'}
+                </button>
               </form>
             )}
           </div>

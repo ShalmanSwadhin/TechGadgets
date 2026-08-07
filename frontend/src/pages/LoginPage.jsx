@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { SITE_NAME } from '../config/site';
 import Logo from '../components/ui/Logo';
+import { useSeo } from '../hooks/useSeo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -15,6 +16,8 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
+
+  useSeo({ title: `Sign In | ${SITE_NAME}` });
 
   const handleSubmit = async (e) => {
     e.preventDefault();

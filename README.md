@@ -93,9 +93,9 @@ VITE_API_URL=/api
 VITE_API_TARGET=http://127.0.0.1:5000
 VITE_STORE_NAME=TechGadgets
 VITE_STORE_TAGLINE=Build In Services
-VITE_STORE_EMAIL=hello@techgadgets.store
+VITE_STORE_EMAIL=techgadgets903@gmail.com
 VITE_STORE_PHONE=01300733439
-VITE_STORE_ADDRESS=Shonir Akhra, Dhaka-1236
+VITE_STORE_ADDRESS=Shonir Akhra, Dhaka
 VITE_STORE_WHATSAPP=8801300733439
 ```
 
@@ -105,6 +105,28 @@ VITE_STORE_WHATSAPP=8801300733439
 - Backend: deploy the Express app on Render
 - Database: use MongoDB Atlas
 - Media: configure Cloudinary for image uploads
+
+### Critical: point the frontend at the real backend URL
+
+The frontend and backend are two separate deployments (Vercel + Render) with no
+shared domain, so `/api` calls from the browser can't resolve on their own —
+there is no server on Vercel to proxy them to Render. `vercel.json` only
+excludes `/api/*` from the SPA fallback so a misconfiguration 404s instead of
+silently returning `index.html`; it does not (and can't, from a static
+`vercel.json` alone) forward `/api/*` to your Render service.
+
+**You must set `VITE_API_URL` as a build-time environment variable in the
+Vercel project settings** to your full backend URL, e.g.:
+
+```
+VITE_API_URL=https://<your-render-service>.onrender.com/api
+```
+
+Also add the resulting Vercel domain(s) to the backend's `CLIENT_URL` env var
+on Render (comma-separated if you have both a custom domain and the
+`*.vercel.app` URL) so CORS allows the browser to call it. Leaving
+`VITE_API_URL` at its local-dev default of `/api` in production will make
+every API call fail.
 
 ## Scripts
 

@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import {
   registerUser,
   loginUser,
@@ -9,6 +9,7 @@ import {
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import { getRateLimitStore } from '../config/rateLimitStore.js';
 
 const router = express.Router();
 
@@ -21,7 +22,10 @@ const authLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `${req.ip}:${(req.body?.email || '').toLowerCase()}`,
+  store: getRateLimitStore(),
+  // ipKeyGenerator normalizes IPv6 addresses to a /56 subnet so a client
+  // can't dodge the limit by rotating through addresses in the same block.
+  keyGenerator: (req) => `${ipKeyGenerator(req.ip)}:${(req.body?.email || '').toLowerCase()}`,
   message: { success: false, message: 'Too many attempts. Please try again later.' },
 });
 

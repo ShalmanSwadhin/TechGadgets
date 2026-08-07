@@ -7,7 +7,6 @@ import {
   getAllOrders,
   updateOrderStatus,
   updateDeliveryChargeNumber,
-  getOrderStats,
 } from '../controllers/orderController.js';
 import { protect, admin, optionalProtect } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
@@ -25,7 +24,6 @@ const shippingValidation = [
 
 router.post('/', optionalProtect, shippingValidation, validate, createOrder);
 router.get('/my', protect, getMyOrders);
-router.get('/stats', protect, admin, getOrderStats);
 router.get('/', protect, admin, getAllOrders);
 router.get('/:id', optionalProtect, getOrderById);
 router.put('/:id/delivery-charge', optionalProtect, updateDeliveryChargeNumber);

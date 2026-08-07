@@ -8,6 +8,8 @@ import { formatPrice, getEffectivePrice } from '../utils/format';
 import EmptyState from '../components/ui/EmptyState';
 import AddressForm from '../components/address/AddressForm';
 import { FiShoppingBag, FiShield, FiCheckCircle, FiTruck, FiHeadphones } from 'react-icons/fi';
+import { useSeo } from '../hooks/useSeo';
+import { SITE_NAME } from '../config/site';
 
 const TRUST_BADGES = [
   { icon: FiShield, label: 'Secure Checkout' },
@@ -38,6 +40,8 @@ export default function CheckoutPage() {
   const submittingRef = useRef(false);
 
   const total = subtotal;
+
+  useSeo({ title: `Checkout | ${SITE_NAME}` });
 
   const [form, setForm] = useState({
     fullName: user?.name || '',
