@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
-import { getEffectivePrice } from '../utils/format';
+import { getLinePrice } from '../utils/format';
 
 const CartContext = createContext(null);
 const GUEST_KEY = 'techgadgets_guest_cart';
@@ -12,7 +12,14 @@ const GUEST_KEY = 'techgadgets_guest_cart';
 const mapServerCart = (cart) =>
   (cart?.items || [])
     .filter((i) => i.product)
-    .map((i) => ({ product: i.product, quantity: i.quantity }));
+    .map((i) => ({ product: i.product, quantity: i.quantity, color: i.color || undefined }));
+
+// A cart line item is identified by product + color together (the same
+// product in two colors are two separate lines); products without variants
+// simply never carry a color, so this collapses back to the old
+// product-only identity for every existing cart.
+const sameLine = (item, productId, color) =>
+  item.product._id === productId && (item.color || undefined) === (color || undefined);
 
 export function CartProvider({ children }) {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -58,6 +65,7 @@ export function CartProvider({ children }) {
                 await api.post('/cart', {
                   productId: item.product._id,
                   quantity: item.quantity,
+                  color: item.color,
                 });
               }
             }
@@ -120,12 +128,12 @@ export function CartProvider({ children }) {
   const addingRef = useRef(false);
 
   const addToCart = useCallback(
-    async (product, qty = 1) => {
+    async (product, qty = 1, color = undefined) => {
       if (isAuthenticated) {
         if (addingRef.current) return;
         addingRef.current = true;
         try {
-          const { data } = await api.post('/cart', { productId: product._id, quantity: qty });
+          const { data } = await api.post('/cart', { productId: product._id, quantity: qty, color });
           setItems(mapServerCart(data.cart));
           showToast('Added to cart');
           openCart();
@@ -138,12 +146,12 @@ export function CartProvider({ children }) {
       }
       // Guest: functional update guarantees we build on the latest state.
       setItems((prev) => {
-        const existing = prev.find((i) => i.product._id === product._id);
+        const existing = prev.find((i) => sameLine(i, product._id, color));
         return existing
           ? prev.map((i) =>
-              i.product._id === product._id ? { ...i, quantity: i.quantity + qty } : i
+              sameLine(i, product._id, color) ? { ...i, quantity: i.quantity + qty } : i
             )
-          : [...prev, { product, quantity: qty }];
+          : [...prev, { product, quantity: qty, color }];
       });
       showToast('Added to cart');
       openCart();
@@ -152,10 +160,10 @@ export function CartProvider({ children }) {
   );
 
   const removeFromCart = useCallback(
-    async (productId) => {
+    async (productId, color = undefined) => {
       if (isAuthenticated) {
         try {
-          const { data } = await api.delete(`/cart/${productId}`);
+          const { data } = await api.delete(`/cart/${productId}`, { params: color ? { color } : undefined });
           setItems(mapServerCart(data.cart));
           showToast('Removed from cart', 'info');
         } catch (err) {
@@ -163,25 +171,25 @@ export function CartProvider({ children }) {
         }
         return;
       }
-      setItems((prev) => prev.filter((i) => i.product._id !== productId));
+      setItems((prev) => prev.filter((i) => !sameLine(i, productId, color)));
       showToast('Removed from cart', 'info');
     },
     [isAuthenticated, showToast]
   );
 
   const updateQuantity = useCallback(
-    async (productId, quantity) => {
+    async (productId, quantity, color = undefined) => {
       if (isAuthenticated) {
         // Decrementing to zero means "remove" — the server rejects quantity
         // < 1 on the update endpoint, so route this through removeFromCart
         // instead of surfacing a confusing "quantity must be at least 1"
         // error (guests already got this right below).
         if (quantity < 1) {
-          await removeFromCart(productId);
+          await removeFromCart(productId, color);
           return;
         }
         try {
-          const { data } = await api.put('/cart', { productId, quantity });
+          const { data } = await api.put('/cart', { productId, quantity, color });
           setItems(mapServerCart(data.cart));
         } catch (err) {
           showToast(err.message, 'error');
@@ -190,8 +198,8 @@ export function CartProvider({ children }) {
       }
       setItems((prev) =>
         quantity < 1
-          ? prev.filter((i) => i.product._id !== productId)
-          : prev.map((i) => (i.product._id === productId ? { ...i, quantity } : i))
+          ? prev.filter((i) => !sameLine(i, productId, color))
+          : prev.map((i) => (sameLine(i, productId, color) ? { ...i, quantity } : i))
       );
     },
     [isAuthenticated, showToast, removeFromCart]
@@ -212,7 +220,7 @@ export function CartProvider({ children }) {
   );
 
   const subtotal = useMemo(
-    () => items.reduce((sum, i) => sum + getEffectivePrice(i.product) * i.quantity, 0),
+    () => items.reduce((sum, i) => sum + getLinePrice(i.product, i.color) * i.quantity, 0),
     [items]
   );
 

@@ -94,6 +94,7 @@ export default function OrderDetailPage() {
                 <img src={item.image} alt="" className="h-16 w-16 rounded-lg object-cover" />
                 <div>
                   <p className="font-medium">{item.title}</p>
+                  {item.color && <p className="text-sm text-slate-500">Color: {item.color}</p>}
                   <p className="text-sm text-slate-500">Qty: {item.quantity}</p>
                   <p className="text-sm font-semibold text-brand-600">{formatPrice(item.price * item.quantity)}</p>
                 </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiMinus, FiPlus, FiShoppingCart } from 'react-icons/fi';
+import { FiMinus, FiPlus, FiShoppingCart, FiShield, FiCheck } from 'react-icons/fi';
 import api from '../services/api';
 import Spinner from '../components/ui/Spinner';
 import StarRating from '../components/ui/StarRating';
@@ -15,12 +15,14 @@ import { SITE_NAME } from '../config/site';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [qty, setQty] = useState(1);
+  const [selectedColor, setSelectedColor] = useState('');
   const [activeImage, setActiveImage] = useState(0);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
   const { addToCart } = useCart();
@@ -47,6 +49,18 @@ export default function ProductDetailPage() {
     };
     load();
   }, [id]);
+
+  // Default to the first color so price/stock always reflect a real,
+  // purchasable selection; products without variants never touch this.
+  useEffect(() => {
+    setSelectedColor(product?.variants?.length > 0 ? product.variants[0].color : '');
+  }, [product]);
+
+  // A quantity valid for one color may exceed another's stock — reset on
+  // every color change rather than silently carrying over an invalid value.
+  useEffect(() => {
+    setQty(1);
+  }, [selectedColor]);
 
   useSeo({
     title: product ? `${product.title} | ${SITE_NAME}` : undefined,
@@ -89,17 +103,35 @@ export default function ProductDetailPage() {
     );
   }
 
-  const discount = getDiscountPercent(product);
-  const price = getEffectivePrice(product);
+  // Variant products (color options) price and stock from the selected
+  // color; a product with no variants prices/stocks from itself exactly as
+  // before — nothing here changes for any existing, variant-less product.
+  const selectedVariant = product.variants?.length > 0
+    ? product.variants.find((v) => v.color === selectedColor) || product.variants[0]
+    : null;
+  const pricedFrom = selectedVariant || product;
+  const discount = getDiscountPercent(pricedFrom);
+  const price = getEffectivePrice(pricedFrom);
+  const stockForSelection = selectedVariant ? selectedVariant.stock : product.stock;
+
+  const handleAddToCart = () => addToCart(product, qty, selectedVariant?.color);
+  const handleBuyNow = async () => {
+    await addToCart(product, qty, selectedVariant?.color);
+    navigate('/checkout');
+  };
 
   return (
     <div className="container-page py-8 pb-28">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="grid gap-10 lg:grid-cols-2"
+        className="grid grid-cols-1 gap-10 lg:grid-cols-2"
       >
-        <div>
+        {/* min-w-0: grid items default to min-width:auto, which lets a wide
+            child (e.g. a long unbroken title, or the action-button row)
+            force this column past the viewport instead of shrinking/wrapping
+            to fit it — this is what let content get clipped on mobile. */}
+        <div className="min-w-0">
           <div className="aspect-square overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
             <img
               src={product.images[activeImage]}
@@ -125,9 +157,9 @@ export default function ProductDetailPage() {
           )}
         </div>
 
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-medium text-brand-600">{product.brand} · {product.category}</p>
-          <h1 className="mt-2 text-3xl font-bold">{product.title}</h1>
+          <h1 className="mt-2 break-words text-3xl font-bold">{product.title}</h1>
           <div className="mt-3 flex items-center gap-3">
             <StarRating rating={product.ratings} size="md" />
             <span className="text-sm text-slate-500">{product.numReviews} reviews</span>
@@ -136,12 +168,51 @@ export default function ProductDetailPage() {
             <span className="text-3xl font-bold text-brand-600">{formatPrice(price)}</span>
             {discount > 0 && (
               <>
-                <span className="text-lg text-slate-400 line-through">{formatPrice(product.price)}</span>
+                <span className="text-lg text-slate-400 line-through">{formatPrice(pricedFrom.price)}</span>
                 <span className="rounded-lg bg-red-100 px-2 py-1 text-sm font-bold text-red-600">-{discount}%</span>
               </>
             )}
           </div>
-          <p className="mt-6 text-slate-600 dark:text-slate-300">{product.description}</p>
+
+          {product.warranty && (
+            <p className="mt-3 flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+              <FiShield className="text-brand-500" /> Warranty: <span className="font-medium">{product.warranty}</span>
+            </p>
+          )}
+
+          {product.variants?.length > 0 && (
+            <div className="mt-5">
+              <p className="text-sm font-medium">Color: <span className="text-slate-500 dark:text-slate-400">{selectedVariant?.color}</span></p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {product.variants.map((v) => {
+                  const active = v.color === selectedVariant?.color;
+                  const variantOut = v.stock === 0;
+                  return (
+                    <button
+                      key={v._id || v.color}
+                      type="button"
+                      onClick={() => setSelectedColor(v.color)}
+                      disabled={variantOut}
+                      className={`flex min-h-[44px] items-center gap-1.5 rounded-xl border-2 px-4 py-2 text-sm font-medium transition ${
+                        active
+                          ? 'border-brand-600 bg-brand-500/10 text-brand-700 dark:text-brand-300'
+                          : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300'
+                      } ${variantOut ? 'cursor-not-allowed opacity-40' : ''}`}
+                    >
+                      {active && <FiCheck className="text-brand-600 dark:text-brand-300" />}
+                      {v.color}
+                      {variantOut && <span className="text-xs">(Out of stock)</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* whitespace-pre-line preserves the line breaks/bullets the admin
+              typed — the stored description is already intact, this just
+              stops the browser's default text collapsing from hiding it. */}
+          <p className="mt-6 whitespace-pre-line text-slate-600 dark:text-slate-300">{product.description}</p>
 
           {product.specifications && Object.keys(product.specifications).length > 0 && (
             <div className="mt-6 card p-4">
@@ -161,27 +232,42 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          <div className="mt-8 flex flex-wrap items-center gap-4">
-            <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-700">
-              <button type="button" onClick={() => setQty(Math.max(1, qty - 1))} className="px-4 py-3">
+          {/* Stacks on mobile (qty row, then a full-width button row) instead
+              of relying on flex-wrap to shrink everything into one row —
+              flex items refuse to shrink below their content's natural
+              width without an explicit min-width, which was overflowing
+              the viewport and clipping "Buy Now" off the right edge. */}
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700">
+              <button type="button" onClick={() => setQty(Math.max(1, qty - 1))} className="min-h-[44px] min-w-[44px] px-4 py-3">
                 <FiMinus />
               </button>
               <span className="w-10 text-center font-medium">{qty}</span>
-              <button type="button" onClick={() => setQty(Math.min(product.stock, qty + 1))} className="px-4 py-3">
+              <button type="button" onClick={() => setQty(Math.min(stockForSelection, qty + 1))} className="min-h-[44px] min-w-[44px] px-4 py-3">
                 <FiPlus />
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => addToCart(product, qty)}
-              disabled={product.stock === 0}
-              className="btn-primary flex-1 sm:flex-none"
-            >
-              <FiShoppingCart /> {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-            </button>
+            <div className="flex min-w-0 gap-3">
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={stockForSelection === 0}
+                className="btn-secondary min-h-[44px] min-w-0 flex-1 sm:flex-none"
+              >
+                <FiShoppingCart /> {stockForSelection === 0 ? 'Out of Stock' : 'Add to Cart'}
+              </button>
+              <button
+                type="button"
+                onClick={handleBuyNow}
+                disabled={stockForSelection === 0}
+                className="btn-primary min-h-[44px] min-w-0 flex-1 sm:flex-none"
+              >
+                Buy Now
+              </button>
+            </div>
           </div>
           <p className="mt-3 text-sm text-slate-500">
-            {product.stock > 0 ? `${product.stock} in stock` : 'Currently unavailable'}
+            {stockForSelection > 0 ? `${stockForSelection} in stock` : 'Currently unavailable'}
           </p>
         </div>
       </motion.div>

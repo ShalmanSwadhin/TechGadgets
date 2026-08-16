@@ -109,6 +109,12 @@ export default function AdminOrders() {
                         {order.shippingAddress.country}
                       </p>
                       <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">Contact: {order.shippingAddress.phone}</p>
+                      {order.deliveryZone && (
+                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 capitalize">
+                          Delivery zone: {order.deliveryZone === 'dhaka' ? 'Inside Dhaka City' : order.deliveryZone === 'subcity' ? 'Sub-City' : 'Outside Dhaka City'}
+                          {' · '}{formatPrice(order.shippingPrice)}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <p className="text-sm font-semibold">Delivery charge number</p>
@@ -156,7 +162,7 @@ export default function AdminOrders() {
                     <ul className="mt-2 space-y-2">
                       {order.orderItems.map((item) => (
                         <li key={item._id} className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
-                          <span>{item.title} × {item.quantity}</span>
+                          <span>{item.title}{item.color ? ` (${item.color})` : ''} × {item.quantity}</span>
                           <span>{formatPrice(item.price * item.quantity)}</span>
                         </li>
                       ))}

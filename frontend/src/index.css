@@ -5,10 +5,18 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    /* Off-canvas panels (cart drawer, mobile filter sheet) are translated
+       past the viewport edge rather than unmounted, so their full width
+       still counts toward the document's scrollable area unless clipped
+       here — without this, mobile browsers allow a horizontal rubber-band
+       scroll that reveals them and can visually clip other fixed content
+       (e.g. buttons pinned near the edge) that assumed a 100vw viewport. */
+    overflow-x: hidden;
   }
   body {
     @apply font-sans antialiased text-slate-900 dark:text-slate-100;
     background-color: theme('colors.surface.light');
+    overflow-x: hidden;
   }
   .dark body {
     background-color: theme('colors.surface.dark');

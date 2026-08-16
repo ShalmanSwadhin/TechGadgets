@@ -10,6 +10,15 @@ export const getEffectivePrice = (product) => {
   return discountPrice != null && discountPrice < price ? discountPrice : price;
 };
 
+// For a cart/order line, the selected color's variant price is authoritative
+// when the product has that variant; otherwise the product's own price
+// applies unchanged — this is what keeps every non-variant product's pricing
+// exactly as it was before variants existed.
+export const getLinePrice = (product, color) => {
+  const variant = color ? product?.variants?.find((v) => v.color === color) : null;
+  return getEffectivePrice(variant || product);
+};
+
 export const getDiscountPercent = (product) => {
   if (!product?.discountPrice || product.discountPrice >= product.price) return 0;
   return Math.round(((product.price - product.discountPrice) / product.price) * 100);

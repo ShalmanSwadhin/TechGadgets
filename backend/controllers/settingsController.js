@@ -22,9 +22,10 @@ export const updateSettings = asyncHandler(async (req, res) => {
   if (!s) {
     s = await Setting.create({});
   }
-  const { deliveryMessageEnabled, deliveryChargeDhaka, deliveryChargeOutside } = req.body;
+  const { deliveryMessageEnabled, deliveryChargeDhaka, deliveryChargeSubCity, deliveryChargeOutside } = req.body;
   if (typeof deliveryMessageEnabled === 'boolean') s.deliveryMessageEnabled = deliveryMessageEnabled;
   if (typeof deliveryChargeDhaka === 'number') s.deliveryChargeDhaka = deliveryChargeDhaka;
+  if (typeof deliveryChargeSubCity === 'number') s.deliveryChargeSubCity = deliveryChargeSubCity;
   if (typeof deliveryChargeOutside === 'number') s.deliveryChargeOutside = deliveryChargeOutside;
   await s.save();
   res.json({ success: true, settings: s });

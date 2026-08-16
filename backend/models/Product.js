@@ -10,6 +10,31 @@ const reviewSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// A color variant carries its own price/stock, authoritative over the base
+// product price/stock whenever a color is selected. Optional and defaulted
+// so products created before variants existed (plain price/stock only)
+// continue to work unchanged — `variants: []` behaves exactly like "no
+// variants" everywhere this is read.
+const variantSchema = new mongoose.Schema(
+  {
+    // Mongoose's default `required` check treats '' as present, so an empty
+    // color would otherwise slip through — the explicit validator closes that.
+    color: {
+      type: String,
+      required: [true, 'Color name is required'],
+      trim: true,
+      validate: {
+        validator: (v) => typeof v === 'string' && v.trim().length > 0,
+        message: 'Color name cannot be empty',
+      },
+    },
+    price: { type: Number, required: true, min: 0 },
+    discountPrice: { type: Number, default: null },
+    stock: { type: Number, required: true, min: 0, default: 0 },
+  },
+  { _id: true }
+);
+
 const productSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
@@ -26,12 +51,39 @@ const productSchema = new mongoose.Schema(
         'USB Cables',
         'Smart Gadgets',
         'Phone Accessories',
+        'Wired Headphones',
+        'Neckband',
+        'Gaming Earphones',
+        'Desktop Fan',
+        'Mini Speakers',
+        'Speakers',
+        'Converter',
+        'Smartwatch',
+        'Microphone',
+        'Trimmer',
+        'Mouse',
+        'Keyboard',
+        'Home Accessories',
       ],
     },
     brand: { type: String, required: true, trim: true },
     price: { type: Number, required: true, min: 0 },
     discountPrice: { type: Number, default: null },
     stock: { type: Number, required: true, min: 0, default: 0 },
+    // Optional per-color variants. Empty/absent (the default for every
+    // existing product) means "this product has no color options" — every
+    // price/stock/cart/order code path falls back to the fields above.
+    variants: {
+      type: [variantSchema],
+      default: [],
+      validate: {
+        validator: (arr) => {
+          const colors = (arr || []).map((v) => v.color.toLowerCase().trim());
+          return colors.length === new Set(colors).size;
+        },
+        message: 'Duplicate color variant names are not allowed.',
+      },
+    },
     sku: { type: String, trim: true, default: '' },
     warranty: { type: String, trim: true, default: '1 year' },
     tags: [{ type: String, trim: true }],

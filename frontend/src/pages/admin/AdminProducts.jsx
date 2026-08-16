@@ -22,7 +22,16 @@ const emptyProduct = {
   featured: false,
   newArrival: false,
   specifications: [],
+  variants: [],
 };
+
+// Stable, content-independent id for list rows (specifications/variants) so
+// React's key never changes while the admin is typing into that row — using
+// the typed text itself as (part of) the key was the cause of a real bug:
+// each keystroke changed the key, which made React unmount/remount the
+// input and drop focus after every character.
+const newRowId = () =>
+  globalThis.crypto?.randomUUID?.() || `row-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
@@ -76,8 +85,14 @@ export default function AdminProducts() {
             product.specifications instanceof Map
               ? Object.fromEntries(product.specifications)
               : product.specifications
-          ).map(([name, value]) => ({ name, value }))
+          ).map(([name, value]) => ({ id: newRowId(), name, value }))
         : [],
+      variants: (product.variants || []).map((v) => ({
+        id: v._id || newRowId(),
+        color: v.color,
+        price: v.price,
+        stock: v.stock,
+      })),
     });
     setFiles([]);
     setModal(product._id);
@@ -142,6 +157,33 @@ export default function AdminProducts() {
       );
     }
 
+    const variantRows = form.variants.filter((v) => v.color?.trim());
+    if (variantRows.length > 0) {
+      for (const v of variantRows) {
+        const price = Number(v.price);
+        const stock = Number(v.stock);
+        if (!Number.isFinite(price) || price < 0) {
+          showToast(`Enter a valid price for color "${v.color.trim()}"`, 'error');
+          return;
+        }
+        if (!Number.isFinite(stock) || stock < 0) {
+          showToast(`Enter a valid stock quantity for color "${v.color.trim()}"`, 'error');
+          return;
+        }
+      }
+      const colorNames = variantRows.map((v) => v.color.trim().toLowerCase());
+      const firstDuplicate = colorNames.find((c, i) => colorNames.indexOf(c) !== i);
+      if (firstDuplicate) {
+        showToast(`Duplicate color variant: "${firstDuplicate}"`, 'error');
+        return;
+      }
+    }
+    payload.variants = variantRows.map((v) => ({
+      color: v.color.trim(),
+      price: Number(v.price),
+      stock: Number(v.stock),
+    }));
+
     try {
       if (modal === 'create') {
         await api.post('/products', payload);
@@ -204,8 +246,20 @@ export default function AdminProducts() {
                     </div>
                   </td>
                   <td className="p-4 text-slate-500">{p.category}</td>
-                  <td className="p-4">{formatPrice(p.price)}</td>
-                  <td className="p-4">{p.stock}</td>
+                  <td className="p-4">
+                    {p.variants?.length > 0 ? (
+                      <span title={p.variants.map((v) => `${v.color}: ${formatPrice(v.price)}`).join(', ')}>
+                        From {formatPrice(Math.min(...p.variants.map((v) => v.price)))}
+                      </span>
+                    ) : (
+                      formatPrice(p.price)
+                    )}
+                  </td>
+                  <td className="p-4">
+                    {p.variants?.length > 0
+                      ? `${p.variants.reduce((sum, v) => sum + v.stock, 0)} (${p.variants.length} colors)`
+                      : p.stock}
+                  </td>
                   <td className="p-4">
                     <div className="flex gap-2">
                       <button type="button" onClick={() => openEdit(p)} className="btn-ghost p-2">
@@ -333,7 +387,7 @@ export default function AdminProducts() {
                 <label className="text-sm font-medium">Specifications</label>
                 <div className="mt-2 space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
                   {form.specifications.map((item, index) => (
-                    <div key={`${item.name}-${index}`} className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+                    <div key={item.id} className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
                       <input
                         value={item.name}
                         onChange={(e) => {
@@ -365,10 +419,70 @@ export default function AdminProducts() {
                   ))}
                   <button
                     type="button"
-                    onClick={() => setForm({ ...form, specifications: [...form.specifications, { name: '', value: '' }] })}
+                    onClick={() => setForm({ ...form, specifications: [...form.specifications, { id: newRowId(), name: '', value: '' }] })}
                     className="btn-ghost mt-1"
                   >
                     <FiPlus /> Add specification
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Color Variants (optional)</label>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  Add a color only if this product has color options with their own price/stock. Leave empty for a regular single-price product.
+                </p>
+                <div className="mt-2 space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                  {form.variants.map((v, index) => (
+                    <div key={v.id} className="grid gap-2 rounded-lg border border-slate-100 p-2 dark:border-slate-800 md:grid-cols-[1fr_1fr_1fr_auto]">
+                      <input
+                        value={v.color}
+                        onChange={(e) => {
+                          const next = [...form.variants];
+                          next[index] = { ...next[index], color: e.target.value };
+                          setForm({ ...form, variants: next });
+                        }}
+                        className="input-field"
+                        placeholder="Color name (e.g. Black)"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        value={v.price}
+                        onChange={(e) => {
+                          const next = [...form.variants];
+                          next[index] = { ...next[index], price: e.target.value };
+                          setForm({ ...form, variants: next });
+                        }}
+                        className="input-field"
+                        placeholder="Price"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        value={v.stock}
+                        onChange={(e) => {
+                          const next = [...form.variants];
+                          next[index] = { ...next[index], stock: e.target.value };
+                          setForm({ ...form, variants: next });
+                        }}
+                        className="input-field"
+                        placeholder="Stock"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, variants: form.variants.filter((_, i) => i !== index) })}
+                        className="btn-ghost text-red-500"
+                      >
+                        <FiTrash2 /> Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, variants: [...form.variants, { id: newRowId(), color: '', price: form.price || '', stock: '' }] })}
+                    className="btn-ghost mt-1"
+                  >
+                    <FiPlus /> Add Color
                   </button>
                 </div>
               </div>

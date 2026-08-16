@@ -600,13 +600,17 @@ export default function AdminDashboard() {
               />
               Show delivery charge confirmation message to customers
             </label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
-                <label className="text-sm">Inside Dhaka (BDT)</label>
+                <label className="text-sm">Inside Dhaka City (BDT)</label>
                 <input type="number" value={settings.deliveryChargeDhaka} onChange={(e) => setSettings((st) => ({ ...st, deliveryChargeDhaka: Number(e.target.value) }))} className="input-field mt-1" />
               </div>
               <div>
-                <label className="text-sm">Outside Dhaka (BDT)</label>
+                <label className="text-sm">Sub-City (BDT)</label>
+                <input type="number" value={settings.deliveryChargeSubCity ?? 100} onChange={(e) => setSettings((st) => ({ ...st, deliveryChargeSubCity: Number(e.target.value) }))} className="input-field mt-1" />
+              </div>
+              <div>
+                <label className="text-sm">Outside Dhaka City (BDT)</label>
                 <input type="number" value={settings.deliveryChargeOutside} onChange={(e) => setSettings((st) => ({ ...st, deliveryChargeOutside: Number(e.target.value) }))} className="input-field mt-1" />
               </div>
             </div>
@@ -617,6 +621,7 @@ export default function AdminDashboard() {
                 try {
                   const { data: res } = await api.put('/admin/settings', {
                     deliveryChargeDhaka: Number(settings.deliveryChargeDhaka),
+                    deliveryChargeSubCity: Number(settings.deliveryChargeSubCity ?? 100),
                     deliveryChargeOutside: Number(settings.deliveryChargeOutside),
                   });
                   setSettings(res.settings);

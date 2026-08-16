@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { FiMinus, FiPlus, FiTrash2, FiX, FiShoppingBag } from 'react-icons/fi';
 import { useCart } from '../../context/CartContext';
-import { formatPrice, getEffectivePrice } from '../../utils/format';
+import { formatPrice, getLinePrice } from '../../utils/format';
 import EmptyState from '../ui/EmptyState';
 
 export default function CartDrawer() {
@@ -47,42 +47,45 @@ export default function CartDrawer() {
             />
           ) : (
             <ul className="space-y-4">
-              {items.map(({ product, quantity }) => (
-                <li key={product._id} className="flex gap-3 rounded-xl border border-slate-100 p-3 dark:border-slate-800">
-                  <img src={product.images?.[0]} alt="" className="h-20 w-20 rounded-lg object-cover" />
-                  <div className="flex-1">
-                    <p className="line-clamp-2 text-sm font-medium">{product.title}</p>
-                    <p className="mt-1 text-sm font-bold text-brand-600">
-                      {formatPrice(getEffectivePrice(product))}
-                    </p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => updateQuantity(product._id, quantity - 1)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700"
-                      >
-                        <FiMinus />
-                      </button>
-                      <span className="w-6 text-center text-sm font-medium">{quantity}</span>
-                      <button
-                        type="button"
-                        onClick={() => updateQuantity(product._id, quantity + 1)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700"
-                      >
-                        <FiPlus />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeFromCart(product._id)}
-                        className="ml-auto text-red-500"
-                        aria-label="Remove"
-                      >
-                        <FiTrash2 />
-                      </button>
+              {items.map(({ product, quantity, color }) => {
+                return (
+                  <li key={`${product._id}-${color || 'default'}`} className="flex gap-3 rounded-xl border border-slate-100 p-3 dark:border-slate-800">
+                    <img src={product.images?.[0]} alt="" className="h-20 w-20 rounded-lg object-cover" />
+                    <div className="flex-1">
+                      <p className="line-clamp-2 text-sm font-medium">{product.title}</p>
+                      {color && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Color: {color}</p>}
+                      <p className="mt-1 text-sm font-bold text-brand-600">
+                        {formatPrice(getLinePrice(product, color))}
+                      </p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(product._id, quantity - 1, color)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700"
+                        >
+                          <FiMinus />
+                        </button>
+                        <span className="w-6 text-center text-sm font-medium">{quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(product._id, quantity + 1, color)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700"
+                        >
+                          <FiPlus />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(product._id, color)}
+                          className="ml-auto text-red-500"
+                          aria-label="Remove"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

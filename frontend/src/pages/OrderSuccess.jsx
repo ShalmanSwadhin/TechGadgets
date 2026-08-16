@@ -290,6 +290,7 @@ export default function OrderSuccess() {
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-white">{item.title}</p>
+                      {item.color && <p className="text-xs text-slate-400">Color: {item.color}</p>}
                       <p className="text-xs text-slate-400">Qty: {item.quantity}</p>
                     </div>
                     <span className="text-sm font-semibold text-white">

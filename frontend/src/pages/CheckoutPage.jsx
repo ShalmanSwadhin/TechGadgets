@@ -4,10 +4,10 @@ import api, { waitForBackendReady } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { formatPrice, getEffectivePrice } from '../utils/format';
+import { formatPrice, getLinePrice } from '../utils/format';
 import EmptyState from '../components/ui/EmptyState';
 import AddressForm from '../components/address/AddressForm';
-import { FiShoppingBag, FiShield, FiCheckCircle, FiTruck, FiHeadphones } from 'react-icons/fi';
+import { FiShoppingBag, FiShield, FiCheckCircle, FiTruck, FiHeadphones, FiClock } from 'react-icons/fi';
 import { useSeo } from '../hooks/useSeo';
 import { SITE_NAME } from '../config/site';
 
@@ -18,14 +18,28 @@ const TRUST_BADGES = [
   { icon: FiHeadphones, label: 'Customer Support' },
 ];
 
+const BKASH_NUMBER = '01677953286';
+
+const DELIVERY_ZONES = [
+  { value: 'dhaka', label: 'Inside Dhaka City' },
+  { value: 'subcity', label: 'Sub-City' },
+  { value: 'outside', label: 'Outside Dhaka City' },
+];
+
 export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCart();
   const { user, isAuthenticated } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [settings, setSettings] = useState({ deliveryMessageEnabled: false, deliveryChargeDhaka: 80, deliveryChargeOutside: 150 });
+  const [settings, setSettings] = useState({
+    deliveryMessageEnabled: false,
+    deliveryChargeDhaka: 80,
+    deliveryChargeSubCity: 100,
+    deliveryChargeOutside: 130,
+  });
   const [agreeDelivery, setAgreeDelivery] = useState(false);
+  const [deliveryZone, setDeliveryZone] = useState('dhaka');
 
   // Stable idempotency key for THIS checkout attempt. Reused across retries so
   // a lost response can never turn one checkout into two orders; the server
@@ -129,6 +143,7 @@ export default function CheckoutPage() {
           deliveryInstructions: form.deliveryInstructions,
           country: form.country,
         },
+        deliveryZone,
         deliveryChargePhone: form.deliveryChargePhone,
       };
 
@@ -136,6 +151,7 @@ export default function CheckoutPage() {
         orderData.items = items.map((i) => ({
           product: i.product._id,
           quantity: i.quantity,
+          color: i.color,
         }));
       }
 
@@ -169,18 +185,30 @@ export default function CheckoutPage() {
         <div className="card h-fit p-6">
           <h2 className="font-semibold">Order Summary</h2>
           {settings.deliveryMessageEnabled && (
-            <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              Delivery charge will be determined based on your delivery location and must be paid in advance before your order is confirmed. Inside Dhaka is taka 80 and Outside Dhaka is taka 150. Please provide the number used to send the delivery charge in the field below.
+            <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+              <p>
+                Delivery charge must be paid in advance before your order is confirmed —{' '}
+                Inside Dhaka City is {formatPrice(settings.deliveryChargeDhaka)}, Sub-City is{' '}
+                {formatPrice(settings.deliveryChargeSubCity)}, and Outside Dhaka City is{' '}
+                {formatPrice(settings.deliveryChargeOutside)}.
+              </p>
+              <p className="mt-2 font-semibold">
+                bKash — Send Money: {BKASH_NUMBER}
+              </p>
+              <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                Please provide the number you sent the delivery charge from below.
+              </p>
             </div>
           )}
+
           <ul className="mt-4 space-y-3 border-b border-slate-100 pb-4 dark:border-slate-800">
-            {items.map(({ product, quantity }) => (
-              <li key={product._id} className="flex justify-between text-sm">
+            {items.map(({ product, quantity, color }) => (
+              <li key={`${product._id}-${color || 'default'}`} className="flex justify-between text-sm">
                 <span className="line-clamp-1 flex-1 pr-4">
-                  {product.title} × {quantity}
+                  {product.title}{color ? ` (${color})` : ''} × {quantity}
                 </span>
                 <span className="font-medium">
-                  {formatPrice(getEffectivePrice(product) * quantity)}
+                  {formatPrice(getLinePrice(product, color) * quantity)}
                 </span>
               </li>
             ))}
@@ -194,7 +222,35 @@ export default function CheckoutPage() {
               <span>Total</span>
               <span className="text-brand-600">{formatPrice(total)}</span>
             </div>
+            <p className="text-xs text-slate-400">Delivery charge is confirmed separately and not included above.</p>
           </div>
+
+          <div className="mt-4">
+            <label className="text-sm font-medium">Delivery location</label>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {DELIVERY_ZONES.map((z) => (
+                <label
+                  key={z.value}
+                  className={`flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-xl border-2 px-3 py-2 text-center text-xs font-medium transition ${
+                    deliveryZone === z.value
+                      ? 'border-brand-600 bg-brand-500/10 text-brand-700 dark:text-brand-300'
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="deliveryZone"
+                    value={z.value}
+                    checked={deliveryZone === z.value}
+                    onChange={() => setDeliveryZone(z.value)}
+                    className="sr-only"
+                  />
+                  {z.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
           {settings.deliveryMessageEnabled && (
             <>
               <label className="mt-4 flex items-center gap-2 text-sm">
@@ -207,13 +263,19 @@ export default function CheckoutPage() {
                   required
                   value={form.deliveryChargePhone}
                   onChange={(e) => setForm({ ...form, deliveryChargePhone: e.target.value })}
-                  placeholder="Enter the number used to send delivery charge"
+                  placeholder="Enter the bKash number used to send delivery charge"
                   className="input-field mt-1"
                 />
               </div>
             </>
           )}
-          <button type="submit" disabled={loading} className="btn-primary mt-6 w-full">
+
+          <div className="mt-6 flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-3 text-sm font-medium text-slate-700 dark:bg-white/5 dark:text-slate-200">
+            <FiClock className="shrink-0 text-brand-500" />
+            Delivery Timescale: 3–4 days
+          </div>
+
+          <button type="submit" disabled={loading} className="btn-primary mt-4 w-full">
             {loading ? 'Placing Order...' : 'Place Order'}
           </button>
 

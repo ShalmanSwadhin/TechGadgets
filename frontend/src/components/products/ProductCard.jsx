@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FiShoppingCart } from 'react-icons/fi';
 import StarRating from '../ui/StarRating';
 import { formatPrice, getDiscountPercent, getEffectivePrice } from '../../utils/format';
@@ -6,10 +6,20 @@ import { useCart } from '../../context/CartContext';
 
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
-  const discount = getDiscountPercent(product);
-  const price = getEffectivePrice(product);
-  const outOfStock = product.stock === 0;
-  const lowStock = !outOfStock && product.stock <= 5;
+  const navigate = useNavigate();
+  const hasVariants = product.variants?.length > 0;
+  // With color variants, the quick-add button can't know which color the
+  // customer wants — send them to the product page to choose instead of
+  // guessing (silently defaulting to a color they didn't pick).
+  const firstVariant = hasVariants ? product.variants[0] : null;
+  const pricedFrom = firstVariant || product;
+  const discount = getDiscountPercent(pricedFrom);
+  const price = getEffectivePrice(pricedFrom);
+  const stockForCard = hasVariants
+    ? product.variants.reduce((sum, v) => sum + v.stock, 0)
+    : product.stock;
+  const outOfStock = stockForCard === 0;
+  const lowStock = !outOfStock && stockForCard <= 5;
 
   return (
     <article className="group card-interactive flex flex-col overflow-hidden">
@@ -62,23 +72,24 @@ export default function ProductCard({ product }) {
 
         {lowStock && (
           <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
-            Only {product.stock} left
+            Only {stockForCard} left
           </p>
         )}
 
         <div className="mt-auto flex items-end justify-between gap-2 pt-3">
           <div className="flex flex-col">
             {discount > 0 && (
-              <span className="text-xs text-slate-400 line-through">{formatPrice(product.price)}</span>
+              <span className="text-xs text-slate-400 line-through">{formatPrice(pricedFrom.price)}</span>
             )}
             <span className="text-lg font-bold text-slate-900 dark:text-white">{formatPrice(price)}</span>
+            {hasVariants && <span className="text-[11px] text-slate-400">{product.variants.length} colors</span>}
           </div>
           <button
             type="button"
-            onClick={() => addToCart(product)}
+            onClick={() => (hasVariants ? navigate(`/products/${product._id}`) : addToCart(product))}
             disabled={outOfStock}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-glow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-glow disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
-            aria-label={`Add ${product.title} to cart`}
+            aria-label={hasVariants ? `View ${product.title} colors` : `Add ${product.title} to cart`}
           >
             <FiShoppingCart />
           </button>

@@ -24,17 +24,28 @@ const isTransactionsUnsupportedError = (err) =>
 // transaction: if any item is oversold, the whole thing — including every
 // stock decrement already applied earlier in this same attempt — rolls back
 // automatically. This is the strong, race-free path used on Atlas.
+// Builds the Mongo filter/update pair for a stock decrement, targeting the
+// matching color variant's stock when the item has a color, otherwise the
+// product's own top-level stock (unchanged, non-variant behavior).
+const decrementQuery = (productId, quantity, color) =>
+  color
+    ? {
+        filter: { _id: productId, variants: { $elemMatch: { color, stock: { $gte: quantity } } } },
+        update: { $inc: { 'variants.$.stock': -quantity, popularity: quantity } },
+      }
+    : {
+        filter: { _id: productId, stock: { $gte: quantity } },
+        update: { $inc: { stock: -quantity, popularity: quantity } },
+      };
+
 async function createOrderTransactional(orderPayload, stockOps) {
   const session = await mongoose.startSession();
   try {
     let createdOrder;
     await session.withTransaction(async () => {
-      for (const { productId, quantity } of stockOps) {
-        const result = await Product.updateOne(
-          { _id: productId, stock: { $gte: quantity } },
-          { $inc: { stock: -quantity, popularity: quantity } },
-          { session }
-        );
+      for (const { productId, quantity, color } of stockOps) {
+        const { filter, update } = decrementQuery(productId, quantity, color);
+        const result = await Product.updateOne(filter, update, { session });
         if (result.modifiedCount === 0) {
           throw new InsufficientStockError('Insufficient stock for one or more items. Please refresh your cart and try again.');
         }
@@ -61,19 +72,22 @@ async function createOrderTransactional(orderPayload, stockOps) {
 // through), but it can never crash-and-lose-stock or 500 the whole request.
 async function createOrderNonTransactional(orderPayload) {
   const order = await Order.create(orderPayload);
-  const stockOps = orderPayload.orderItems.map((i) => ({ productId: i.product, quantity: i.quantity }));
+  const stockOps = orderPayload.orderItems.map((i) => ({
+    productId: i.product,
+    quantity: i.quantity,
+    color: i.color,
+  }));
   if (stockOps.length > 0) {
     await Promise.all(
-      stockOps.map(async ({ productId, quantity }) => {
-        const result = await Product.updateOne(
-          { _id: productId, stock: { $gte: quantity } },
-          { $inc: { stock: -quantity, popularity: quantity } }
-        );
+      stockOps.map(async ({ productId, quantity, color }) => {
+        const { filter, update } = decrementQuery(productId, quantity, color);
+        const result = await Product.updateOne(filter, update);
         if (result.modifiedCount === 0) {
-          await Product.updateOne(
-            { _id: productId },
-            { $set: { stock: 0 }, $inc: { popularity: quantity } }
-          );
+          const clampFilter = color ? { _id: productId, 'variants.color': color } : { _id: productId };
+          const clampUpdate = color
+            ? { $set: { 'variants.$.stock': 0 }, $inc: { popularity: quantity } }
+            : { $set: { stock: 0 }, $inc: { popularity: quantity } };
+          await Product.updateOne(clampFilter, clampUpdate);
         }
       })
     );
@@ -115,7 +129,7 @@ export const createOrder = asyncHandler(async (req, res) => {
         res.status(404);
         throw new Error('Product not found');
       }
-      itemsToProcess.push({ product, quantity: item.quantity });
+      itemsToProcess.push({ product, quantity: item.quantity, color: item.color || undefined });
     }
   }
 
@@ -127,20 +141,47 @@ export const createOrder = asyncHandler(async (req, res) => {
   for (const item of itemsToProcess) {
     const product = item.product;
     if (!product) continue;
-    if (product.stock < item.quantity) {
+    const color = item.color || undefined;
+
+    // Variant products (color options) are priced/stocked per color; the
+    // base price/stock only apply when the product has no variants at all —
+    // this is what keeps every existing, variant-less product unchanged.
+    let unitPrice;
+    let availableStock;
+    if (product.variants?.length > 0) {
+      if (!color) {
+        res.status(400);
+        throw new Error(`Please select a color for ${product.title}`);
+      }
+      const variant = product.variants.find((v) => v.color === color);
+      if (!variant) {
+        res.status(400);
+        throw new Error(`Invalid color variant for ${product.title}`);
+      }
+      availableStock = variant.stock;
+      unitPrice =
+        variant.discountPrice != null && variant.discountPrice < variant.price
+          ? variant.discountPrice
+          : variant.price;
+    } else {
+      availableStock = product.stock;
+      unitPrice = getPrice(product);
+    }
+
+    if (availableStock < item.quantity) {
       res.status(400);
       throw new Error(`Insufficient stock for ${product.title}`);
     }
-    const price = getPrice(product);
     orderItems.push({
       product: product._id,
       title: product.title,
       image: product.images[0],
-      price,
+      price: unitPrice,
       quantity: item.quantity,
+      color,
     });
-    itemsPrice += price * item.quantity;
-    stockOps.push({ productId: product._id, quantity: item.quantity });
+    itemsPrice += unitPrice * item.quantity;
+    stockOps.push({ productId: product._id, quantity: item.quantity, color });
   }
 
   // Guest orders have no account to own them, so anyone who saw/guessed the
@@ -150,12 +191,33 @@ export const createOrder = asyncHandler(async (req, res) => {
   // instead and don't need one.
   const guestAccessToken = req.user ? undefined : crypto.randomBytes(20).toString('hex');
 
-  // Determine shipping price based on settings and destination city/district
-  const settings = (await Setting.findOne()) || { deliveryChargeDhaka: 80, deliveryChargeOutside: 150 };
-  const districtOrCity = (req.body.shippingAddress?.district || req.body.shippingAddress?.city || '').toString().toLowerCase();
+  // Determine shipping price from the explicit delivery zone the customer
+  // picked at checkout. The zone (not free-text district parsing) is the
+  // source of truth so what the UI shows the customer always matches what
+  // gets charged; district-based inference is kept only as a fallback for
+  // any caller that doesn't send a zone (keeps old/external requests working).
+  const settings = (await Setting.findOne()) || {
+    deliveryChargeDhaka: 80,
+    deliveryChargeSubCity: 100,
+    deliveryChargeOutside: 130,
+  };
+  const rawZone = (req.body.deliveryZone || '').toString().toLowerCase();
+  const deliveryZone = ['dhaka', 'subcity', 'outside'].includes(rawZone)
+    ? rawZone
+    : (req.body.shippingAddress?.district || req.body.shippingAddress?.city || '')
+          .toString()
+          .toLowerCase()
+          .includes('dhaka')
+      ? 'dhaka'
+      : 'outside';
+  const ZONE_RATE = {
+    dhaka: settings.deliveryChargeDhaka,
+    subcity: settings.deliveryChargeSubCity,
+    outside: settings.deliveryChargeOutside,
+  };
   let shippingPrice = 0;
   if (itemsPrice > 0) {
-    shippingPrice = districtOrCity.includes('dhaka') ? settings.deliveryChargeDhaka : settings.deliveryChargeOutside;
+    shippingPrice = ZONE_RATE[deliveryZone];
   }
   const totalPrice = itemsPrice; // keep order total as product subtotal only; shipping is stored separately
 
@@ -163,6 +225,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     user: req.user ? req.user._id : undefined,
     orderItems,
     shippingAddress: req.body.shippingAddress,
+    deliveryZone: itemsPrice > 0 ? deliveryZone : undefined,
     deliveryChargePhone: req.body.deliveryChargePhone || '',
     paymentMethod: 'cod',
     itemsPrice,

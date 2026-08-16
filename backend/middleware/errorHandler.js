@@ -28,6 +28,15 @@ export const errorHandler = (err, req, res, _next) => {
       .join(', ');
   }
 
+  // An invalid/malformed/expired JWT (e.g. stale localStorage token from a
+  // JWT_SECRET rotation, or a hand-edited Authorization header) throws
+  // instead of returning null — same class of bug as the CastError above,
+  // just from jsonwebtoken instead of Mongoose. Was surfacing as a raw 500.
+  if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+    statusCode = 401;
+    message = 'Not authorized, invalid or expired token';
+  }
+
   // Unique-index violation not already handled by the caller (e.g. a rare
   // concurrent duplicate registration/review race).
   if (err.code === 11000) {
