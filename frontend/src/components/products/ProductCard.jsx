@@ -76,7 +76,10 @@ export default function ProductCard({ product }) {
           </p>
         )}
 
-        <div className="mt-auto flex items-end justify-between gap-2 pt-3">
+        {/* The price gets its own full-width row so it's never squeezed by
+            a neighboring button — the button sits in its own row below,
+            full width, so it never competes with the price for space. */}
+        <div className="mt-auto pt-3">
           <div className="flex flex-col">
             {discount > 0 && (
               <span className="text-xs text-slate-400 line-through">{formatPrice(pricedFrom.price)}</span>
@@ -88,10 +91,11 @@ export default function ProductCard({ product }) {
             type="button"
             onClick={() => (hasVariants ? navigate(`/products/${product._id}`) : addToCart(product))}
             disabled={outOfStock}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-glow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-glow disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
+            className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-gradient text-sm font-semibold text-white shadow-glow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-glow disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
             aria-label={hasVariants ? `View ${product.title} colors` : `Add ${product.title} to cart`}
           >
             <FiShoppingCart />
+            {outOfStock ? 'Out of Stock' : hasVariants ? 'View Options' : 'Add to Cart'}
           </button>
         </div>
       </div>
