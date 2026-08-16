@@ -12,6 +12,7 @@ import {
   FiShoppingBag,
 } from 'react-icons/fi';
 import api from '../services/api';
+import CategorySlider from '../components/home/CategorySlider';
 import ProductCard from '../components/products/ProductCard';
 import { ProductCardSkeleton } from '../components/ui/Skeleton';
 import StarRating from '../components/ui/StarRating';
@@ -157,6 +158,10 @@ export default function HomePage() {
           </motion.div>
         </div>
       </section>
+
+      {/* 1.5 Category ticker — immediately after the hero, before every
+          existing section. Does not touch the hero or any section below. */}
+      <CategorySlider />
 
       {/* 2. Trending / Best Sellers */}
       {(loading || trending.length > 0) && (
