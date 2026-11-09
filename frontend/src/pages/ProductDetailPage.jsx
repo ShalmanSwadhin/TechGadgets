@@ -9,7 +9,7 @@ import ProductCard from '../components/products/ProductCard';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { formatPrice, getDiscountPercent, getEffectivePrice } from '../utils/format';
+import { formatPrice, getDiscountPercent, getEffectivePrice, resolveVariantPricing } from '../utils/format';
 import { useSeo } from '../hooks/useSeo';
 import { SITE_NAME } from '../config/site';
 
@@ -109,7 +109,7 @@ export default function ProductDetailPage() {
   const selectedVariant = product.variants?.length > 0
     ? product.variants.find((v) => v.color === selectedColor) || product.variants[0]
     : null;
-  const pricedFrom = selectedVariant || product;
+  const pricedFrom = selectedVariant ? resolveVariantPricing(product, selectedVariant) : product;
   const discount = getDiscountPercent(pricedFrom);
   const price = getEffectivePrice(pricedFrom);
   const stockForSelection = selectedVariant ? selectedVariant.stock : product.stock;

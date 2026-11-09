@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { FiShoppingCart } from 'react-icons/fi';
 import StarRating from '../ui/StarRating';
-import { formatPrice, getDiscountPercent, getEffectivePrice } from '../../utils/format';
+import { formatPrice, getDiscountPercent, getEffectivePrice, resolveVariantPricing } from '../../utils/format';
 import { useCart } from '../../context/CartContext';
 
 export default function ProductCard({ product }) {
@@ -12,7 +12,7 @@ export default function ProductCard({ product }) {
   // customer wants — send them to the product page to choose instead of
   // guessing (silently defaulting to a color they didn't pick).
   const firstVariant = hasVariants ? product.variants[0] : null;
-  const pricedFrom = firstVariant || product;
+  const pricedFrom = firstVariant ? resolveVariantPricing(product, firstVariant) : product;
   const discount = getDiscountPercent(pricedFrom);
   const price = getEffectivePrice(pricedFrom);
   const stockForCard = hasVariants
