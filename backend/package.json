@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch server/index.js",
     "start": "node server/index.js",
-    "create-admin": "node seed/createAdmin.js"
+    "create-admin": "node seed/createAdmin.js",
+    "test": "node --test tests/pricing.test.js tests/products.api.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

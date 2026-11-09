@@ -33,6 +33,8 @@ const emptyProduct = {
 const newRowId = () =>
   globalThis.crypto?.randomUUID?.() || `row-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
+const hasValue = (v) => v !== '' && v != null;
+
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -66,20 +68,20 @@ export default function AdminProducts() {
 
   const openEdit = (product) => {
     setForm({
-      title: product.title,
-      description: product.description,
-      category: product.category,
-      brand: product.brand,
-      price: product.price,
+      title: product.title ?? '',
+      description: product.description ?? '',
+      category: product.category || emptyProduct.category,
+      brand: product.brand ?? '',
+      price: product.price ?? '',
       discountPrice: product.discountPrice || '',
-      stock: product.stock,
+      stock: product.stock ?? '',
       sku: product.sku || '',
       warranty: product.warranty || '1 year',
       tags: (product.tags || []).join(', '),
       thumbnail: product.thumbnail || product.images?.[0] || '',
       images: (product.images || []).join('\n'),
-      featured: product.featured,
-      newArrival: product.newArrival,
+      featured: !!product.featured,
+      newArrival: !!product.newArrival,
       specifications: product.specifications
         ? Object.entries(
             product.specifications instanceof Map
@@ -89,9 +91,10 @@ export default function AdminProducts() {
         : [],
       variants: (product.variants || []).map((v) => ({
         id: v._id || newRowId(),
-        color: v.color,
-        price: v.price,
-        stock: v.stock,
+        color: v.color ?? '',
+        price: v.price ?? '',
+        discountPrice: v.discountPrice || '',
+        stock: v.stock ?? '',
       })),
     });
     setFiles([]);
@@ -149,7 +152,7 @@ export default function AdminProducts() {
       newArrival: form.newArrival,
     };
 
-    if (form.specifications.length > 0) {
+    if (modal !== 'create' || form.specifications.length > 0) {
       payload.specifications = Object.fromEntries(
         form.specifications
           .filter((item) => item.name?.trim() && item.value?.trim())
@@ -164,6 +167,11 @@ export default function AdminProducts() {
         const stock = Number(v.stock);
         if (!Number.isFinite(price) || price < 0) {
           showToast(`Enter a valid price for color "${v.color.trim()}"`, 'error');
+          return;
+        }
+        const discount = hasValue(v.discountPrice) ? Number(v.discountPrice) : 0;
+        if (!Number.isFinite(discount) || discount < 0 || (discount > 0 && discount >= price)) {
+          showToast(`Discount for color "${v.color.trim()}" must be a number lower than its price`, 'error');
           return;
         }
         if (!Number.isFinite(stock) || stock < 0) {
@@ -181,6 +189,7 @@ export default function AdminProducts() {
     payload.variants = variantRows.map((v) => ({
       color: v.color.trim(),
       price: Number(v.price),
+      discountPrice: Number(v.discountPrice) > 0 ? Number(v.discountPrice) : null,
       stock: Number(v.stock),
     }));
 
@@ -429,11 +438,11 @@ export default function AdminProducts() {
               <div>
                 <label className="text-sm font-medium">Color Variants (optional)</label>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Add a color only if this product has color options with their own price/stock. Leave empty for a regular single-price product.
+                  Add a color only if this product has color options with their own price/stock. Leave empty for a regular single-price product. A color with no Discount of its own uses the product discount when its price matches the product price.
                 </p>
                 <div className="mt-2 space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
                   {form.variants.map((v, index) => (
-                    <div key={v.id} className="grid gap-2 rounded-lg border border-slate-100 p-2 dark:border-slate-800 md:grid-cols-[1fr_1fr_1fr_auto]">
+                    <div key={v.id} className="grid gap-2 rounded-lg border border-slate-100 p-2 dark:border-slate-800 md:grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
                       <input
                         value={v.color}
                         onChange={(e) => {
@@ -459,6 +468,18 @@ export default function AdminProducts() {
                       <input
                         type="number"
                         min="0"
+                        value={v.discountPrice}
+                        onChange={(e) => {
+                          const next = [...form.variants];
+                          next[index] = { ...next[index], discountPrice: e.target.value };
+                          setForm({ ...form, variants: next });
+                        }}
+                        className="input-field"
+                        placeholder="Discount"
+                      />
+                      <input
+                        type="number"
+                        min="0"
                         value={v.stock}
                         onChange={(e) => {
                           const next = [...form.variants];
@@ -479,7 +500,7 @@ export default function AdminProducts() {
                   ))}
                   <button
                     type="button"
-                    onClick={() => setForm({ ...form, variants: [...form.variants, { id: newRowId(), color: '', price: form.price || '', stock: '' }] })}
+                    onClick={() => setForm({ ...form, variants: [...form.variants, { id: newRowId(), color: '', price: form.price || '', discountPrice: '', stock: '' }] })}
                     className="btn-ghost mt-1"
                   >
                     <FiPlus /> Add Color
