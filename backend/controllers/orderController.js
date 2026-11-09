@@ -5,9 +5,7 @@ import Cart from '../models/Cart.js';
 import Product from '../models/Product.js';
 import Setting from '../models/Setting.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-
-const getPrice = (p) =>
-  p.discountPrice != null && p.discountPrice < p.price ? p.discountPrice : p.price;
+import { getEffectivePrice as getPrice, getVariantEffectivePrice } from '../utils/pricing.js';
 
 class InsufficientStockError extends Error {}
 
@@ -159,10 +157,7 @@ export const createOrder = asyncHandler(async (req, res) => {
         throw new Error(`Invalid color variant for ${product.title}`);
       }
       availableStock = variant.stock;
-      unitPrice =
-        variant.discountPrice != null && variant.discountPrice < variant.price
-          ? variant.discountPrice
-          : variant.price;
+      unitPrice = getVariantEffectivePrice(product, variant);
     } else {
       availableStock = product.stock;
       unitPrice = getPrice(product);

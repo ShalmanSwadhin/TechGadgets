@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { getEffectivePrice } from '../utils/pricing.js';
 
 const reviewSchema = new mongoose.Schema(
   {
@@ -29,7 +30,7 @@ const variantSchema = new mongoose.Schema(
       },
     },
     price: { type: Number, required: true, min: 0 },
-    discountPrice: { type: Number, default: null },
+    discountPrice: { type: Number, default: null, min: 0 },
     stock: { type: Number, required: true, min: 0, default: 0 },
   },
   { _id: true }
@@ -68,7 +69,7 @@ const productSchema = new mongoose.Schema(
     },
     brand: { type: String, required: true, trim: true },
     price: { type: Number, required: true, min: 0 },
-    discountPrice: { type: Number, default: null },
+    discountPrice: { type: Number, default: null, min: 0 },
     stock: { type: Number, required: true, min: 0, default: 0 },
     // Optional per-color variants. Empty/absent (the default for every
     // existing product) means "this product has no color options" — every
@@ -111,9 +112,7 @@ const productSchema = new mongoose.Schema(
 );
 
 productSchema.virtual('effectivePrice').get(function () {
-  return this.discountPrice != null && this.discountPrice < this.price
-    ? this.discountPrice
-    : this.price;
+  return getEffectivePrice(this);
 });
 
 // Indexes to keep listing, filtering, and sorting efficient at scale.
